@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Endogin OS</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --eg-bg-0:#0a1730; --eg-bg-1:#102344;
+    --eg-gold-100:#f2dfae; --eg-gold-300:#e3bd76; --eg-gold-500:#c9974b; --eg-gold-700:#a3762f;
+    --eg-text:#f3f0e8; --eg-muted:#93a3c2;
+    --eg-ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  html,body{margin:0;background:var(--eg-bg-0);}
+  body{font-family:'Montserrat',sans-serif;color:var(--eg-text);overflow-x:hidden;}
+
+  /* ===================== 1a tela: o logo sob a luz ===================== */
+  .abertura{
+    position:relative;height:100vh;width:100%;overflow:hidden;z-index:1;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse 120% 80% at 50% -20%, #17305c 0%, #0a1730 58%), var(--eg-bg-0);
+  }
+
+  /* O facho nao e um degrade parado: sao sete laminas de luz, cada uma com a
+     sua duracao e o seu atraso. Como elas nunca coincidem, o conjunto nunca se
+     repete igual — e isso que tira a cara de imagem estatica. */
+  .raios{
+    position:absolute;left:50%;top:-8vh;
+    width:min(125vw,1120px);height:112vh;pointer-events:none;z-index:0;
+    transform:translateX(-50%);
+    transition:transform .6s var(--eg-ease);
+  }
+  .raios i{
+    position:absolute;left:50%;top:0;height:100%;width:30%;margin-left:-15%;
+    background:linear-gradient(180deg, rgba(242,223,174,0.20) 0%, rgba(227,189,118,0.07) 45%, transparent 80%);
+    -webkit-mask-image:linear-gradient(90deg, transparent 2%, #000 50%, transparent 98%);
+    mask-image:linear-gradient(90deg, transparent 2%, #000 50%, transparent 98%);
+    transform-origin:50% 0;transform:rotate(var(--r,0deg));
+    animation:eg-lamina 9s ease-in-out infinite alternate;
+  }
+  .raios i:nth-child(1){--r:-19deg;animation-duration:8s;animation-delay:-1s;}
+  .raios i:nth-child(2){--r:-12deg;animation-duration:11s;animation-delay:-3s;}
+  .raios i:nth-child(3){--r:-6deg;animation-duration:9.5s;animation-delay:-5s;}
+  .raios i:nth-child(4){--r:0deg;animation-duration:12s;animation-delay:-2s;}
+  .raios i:nth-child(5){--r:6deg;animation-duration:10s;animation-delay:-6s;}
+  .raios i:nth-child(6){--r:12deg;animation-duration:8.5s;animation-delay:-4s;}
+  .raios i:nth-child(7){--r:19deg;animation-duration:11.5s;animation-delay:-7s;}
+
+  /* halo largo: o ambiente da sala */
+  .halo{
+    position:absolute;left:50%;top:-16vh;transform:translateX(-50%);
+    width:min(130vw,1200px);height:100vh;pointer-events:none;z-index:0;
+    background:radial-gradient(ellipse 44% 54% at 50% 0%,
+      rgba(242,223,174,0.22) 0%, rgba(201,151,75,0.09) 38%, transparent 72%);
+    animation:eg-halo 9s ease-in-out infinite alternate;
+    transition:transform .6s var(--eg-ease);
+  }
+  /* piso de luz: sem ele o facho fica solto no ar */
+  .piso{
+    position:absolute;left:50%;top:60%;transform:translateX(-50%);
+    width:min(74vw,660px);height:210px;pointer-events:none;z-index:0;
+    background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(201,151,75,0.20), transparent 70%);
+    filter:blur(24px);
+  }
+
+  /* poeira dourada subindo dentro do facho: e o que da volume a luz */
+  .poeira{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+  /* Cor chapada em vez de radial-gradient por particula: sao dezenas de
+     camadas, e cada gradiente e uma textura que o navegador precisa gerar. */
+  .poeira b, .fagulhas b{
+    position:absolute;display:block;border-radius:50%;
+    background:rgba(242,223,174,.85);box-shadow:0 0 6px rgba(242,223,174,.5);
+    animation-name:eg-poeira;animation-timing-function:linear;animation-iteration-count:infinite;
+  }
+
+  .logo-caixa{position:relative;z-index:3;display:flex;align-items:center;justify-content:center;}
+  /* Nada animado sobre o logo. `filter: drop-shadow` animado e das coisas
+     mais caras que existem em CSS — o navegador refaz a sombra inteira a cada
+     quadro — e a varredura em `mix-blend-mode` custava outro tanto. A luz que
+     se move continua existindo nas laminas atras; o logo so a recebe. */
+  .logo-grande{
+    width:clamp(230px,36vw,520px);height:auto;display:block;
+    filter:drop-shadow(0 30px 64px rgba(0,0,0,.72)) drop-shadow(0 0 54px rgba(242,223,174,.34));
+    animation:eg-entra 1.2s var(--eg-ease) both;
+  }
+
+  /* ------------------------------- a seta ------------------------------- */
+  /* Centralizado por flex e nao por translateX(-50%): a animacao de entrada
+     termina em `transform:none` e animacao vence declaracao normal na cascata,
+     entao ela apagava a centralizacao e o botao ficava meia largura a direita. */
+  .descer{
+    position:absolute;left:0;right:0;bottom:5.5vh;z-index:4;
+    display:flex;flex-direction:column;align-items:center;gap:14px;
+    pointer-events:none;
+    animation:eg-entra 1s var(--eg-ease) .6s both;
+  }
+  .descer .seta{pointer-events:auto;}
+  /* fio de luz descendo ate a seta, indicando o caminho */
+  .descer .fio{
+    width:1px;height:64px;position:relative;overflow:hidden;
+    background:linear-gradient(to bottom, transparent, rgba(227,189,118,.75));
+  }
+  .descer .fio::after{
+    content:"";position:absolute;left:-1px;width:3px;height:22px;border-radius:2px;
+    background:linear-gradient(to bottom, transparent, var(--eg-gold-100));
+    filter:blur(1px);animation:eg-desce 2.2s ease-in-out infinite;
+  }
+  .seta{
+    position:relative;width:82px;height:82px;border-radius:999px;cursor:pointer;padding:0;
+    display:flex;align-items:center;justify-content:center;color:#2a1c07;border:none;
+    background:linear-gradient(145deg, var(--eg-gold-100) 0%, var(--eg-gold-500) 55%, var(--eg-gold-700) 100%);
+    box-shadow:0 22px 50px -14px rgba(0,0,0,.9), 0 0 60px -8px rgba(201,151,75,.7),
+               inset 0 2px 3px rgba(255,255,255,.55), inset 0 -3px 6px rgba(120,84,26,.5);
+    animation:eg-pula 2.4s ease-in-out infinite;
+    transition:filter .35s var(--eg-ease), box-shadow .35s var(--eg-ease);
+  }
+  .seta:hover{
+    filter:brightness(1.1);
+    box-shadow:0 26px 60px -14px rgba(0,0,0,.9), 0 0 80px -4px rgba(227,189,118,.85), inset 0 2px 3px rgba(255,255,255,.6);
+  }
+  .seta svg{width:34px;height:34px;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  /* dois aneis em tempos diferentes: um so parece piscar, dois parecem pulsar */
+  .seta::before,.seta::after{
+    content:"";position:absolute;inset:0;border-radius:999px;pointer-events:none;
+    border:1.5px solid rgba(227,189,118,.7);
+  }
+  .seta::before{animation:eg-anel 2.8s ease-out infinite;}
+  .seta::after{animation:eg-anel 2.8s ease-out 1.4s infinite;}
+
+  /* ===================== a cortina ===================== */
+  /* Um bloco de uma tela com `clip-path` vira o bloco de contencao dos filhos
+     `fixed`: o rodape fica preso na janela e so aparece dentro desse retangulo.
+     Rolando, o retangulo sobe e revela. Sem biblioteca nenhuma. */
+  .rodape-wrap{
+    position:relative;height:100vh;width:100%;
+    clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  .rodape{
+    position:fixed;bottom:0;left:0;width:100%;height:100vh;
+    display:flex;flex-direction:column;justify-content:space-between;
+    overflow:hidden;background:var(--eg-bg-0);
+  }
+  .rodape .aurora{
+    position:absolute;left:50%;top:48%;width:86vw;height:66vh;
+    transform:translate(-50%,-50%);border-radius:50%;filter:blur(90px);
+    pointer-events:none;z-index:0;
+    background:radial-gradient(circle at 50% 50%,
+      rgba(227,189,118,0.26) 0%, rgba(201,151,75,0.15) 38%, rgba(28,63,112,0.14) 62%, transparent 74%);
+  }
+
+  /* Ornamento dourado no lugar do quadriculado: dois aneis concentricos, o de
+     dentro tracejado e girando devagar. Dourado que se move, nao linha de grade. */
+  .aro,.aro2{
+    position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+    border-radius:50%;pointer-events:none;z-index:0;
+  }
+  .aro{width:min(86vw,820px);aspect-ratio:1;border:1px solid rgba(201,151,75,.20);}
+  .aro2{
+    width:min(64vw,610px);aspect-ratio:1;
+    border:1px dashed rgba(227,189,118,.28);
+    animation:eg-gira 70s linear infinite;
+  }
+  .fagulhas{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+
+  .gigante{
+    position:absolute;left:50%;bottom:-6vh;z-index:0;text-align:center;
+    font-family:'Sora',sans-serif;font-weight:800;font-size:min(15vw,230px);
+    line-height:.8;letter-spacing:-.05em;white-space:nowrap;
+    color:transparent;-webkit-text-stroke:1px rgba(201,151,75,0.20);
+    background:linear-gradient(180deg, rgba(227,189,118,0.16) 0%, transparent 62%);
+    -webkit-background-clip:text;background-clip:text;
+    pointer-events:none;user-select:none;
+    transform:translate(-50%, calc((1 - var(--p,0)) * 10vh)) scale(calc(.86 + var(--p,0) * .14));
+    opacity:var(--p,0);
+  }
+
+  .marquise{
+    position:absolute;top:10vh;left:0;width:100%;z-index:10;overflow:hidden;padding:14px 0;
+    border-top:1px solid rgba(201,151,75,.32);border-bottom:1px solid rgba(201,151,75,.32);
+    background:linear-gradient(90deg, rgba(14,30,60,.86), rgba(28,54,96,.94), rgba(14,30,60,.86));
+    transform:rotate(-2deg) scale(1.1);box-shadow:0 24px 60px rgba(0,0,0,0.5);
+  }
+  .marquise-trilho{display:flex;width:max-content;animation:eg-corre 42s linear infinite;}
+  .marquise-item{
+    display:flex;align-items:center;gap:44px;padding:0 22px;
+    font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;
+    color:var(--eg-gold-100);white-space:nowrap;
+  }
+  .marquise-item b{color:var(--eg-gold-500);font-weight:700;}
+
+  .rodape-centro{
+    position:relative;z-index:10;flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:30px;
+    padding:19vh 24px 4vh;width:100%;max-width:900px;margin:0 auto;
+  }
+  .filete{
+    width:130px;height:1px;border:0;margin:0;opacity:var(--q,0);
+    background:linear-gradient(90deg, transparent, var(--eg-gold-500), transparent);
+  }
+  .rodape-titulo{
+    font-family:'Sora',sans-serif;font-weight:800;font-size:clamp(27px,4.4vw,54px);
+    letter-spacing:-.03em;line-height:1.08;margin:0;text-align:center;text-wrap:balance;
+    color:var(--eg-text);
+    transform:translateY(calc((1 - var(--q,0)) * 46px));opacity:var(--q,0);
+  }
+  /* a ultima palavra em ouro: e o contraste que faz a frase virar assinatura */
+  .rodape-titulo em{
+    font-style:normal;
+    background:linear-gradient(180deg, var(--eg-gold-100) 0%, var(--eg-gold-500) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 22px rgba(201,151,75,.45));
+  }
+  .pilulas{
+    display:flex;flex-wrap:wrap;justify-content:center;gap:14px;width:100%;
+    transform:translateY(calc((1 - var(--q,0)) * 46px));opacity:var(--q,0);
+  }
+  .pilula{
+    display:inline-flex;align-items:center;gap:12px;text-decoration:none;
+    padding:17px 30px;border-radius:999px;
+    font-size:13.5px;font-weight:700;color:var(--eg-text);
+    background:linear-gradient(145deg, rgba(201,151,75,0.13) 0%, rgba(243,240,232,0.02) 100%);
+    border:1px solid rgba(201,151,75,0.34);
+    box-shadow:0 10px 30px -10px rgba(0,0,0,0.6), inset 0 1px 1px rgba(242,223,174,0.20);
+    transition:background .4s var(--eg-ease), border-color .4s var(--eg-ease), box-shadow .4s var(--eg-ease);
+  }
+  .pilula:hover{
+    background:linear-gradient(145deg, rgba(201,151,75,0.30) 0%, rgba(243,240,232,0.03) 100%);
+    border-color:var(--eg-gold-300);
+    box-shadow:0 20px 44px -10px rgba(0,0,0,.7), 0 0 34px -10px rgba(201,151,75,.6), inset 0 1px 1px rgba(242,223,174,0.32);
+  }
+  .pilula .ico{font-size:17px;color:var(--eg-gold-300);}
+  .pilula small{display:block;font-size:10.5px;font-weight:500;color:var(--eg-muted);letter-spacing:.02em;margin-top:2px;}
+
+  .rodape-pe{
+    position:relative;z-index:20;width:100%;padding:0 26px 30px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+  }
+  .credito{font-size:9.5px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--eg-gold-500);}
+  .topo-btn{
+    width:48px;height:48px;border-radius:999px;flex:none;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    color:var(--eg-gold-300);font-size:16px;
+    background:rgba(201,151,75,0.08);border:1px solid rgba(201,151,75,0.34);
+    transition:color .3s var(--eg-ease), border-color .3s var(--eg-ease), background .3s var(--eg-ease);
+    will-change:transform;
+  }
+  .topo-btn:hover{color:#2a1c07;background:linear-gradient(145deg,var(--eg-gold-100),var(--eg-gold-500));border-color:transparent;}
+  .topo-btn span{display:block;transition:transform .3s var(--eg-ease);}
+  .topo-btn:hover span{transform:translateY(-3px);}
+
+  @keyframes eg-entra{from{opacity:0;transform:translateY(18px) scale(.96);}to{opacity:1;transform:none;}}
+
+  /* No celular 100vh inclui a area sob a barra do navegador: a seta, que fica
+     colada embaixo, nascia escondida atras dela. `dvh` mede a altura que a
+     pessoa realmente enxerga. Fica em @supports porque navegador antigo
+     ignora a unidade inteira e perderia a altura. */
+  @supports (height:100dvh){
+    .abertura{height:100dvh;}
+    .rodape-wrap{height:100dvh;}
+    .rodape{height:100dvh;}
+  }
+  /* So opacidade: e a unica propriedade, junto com transform, que o navegador
+     anima sem repintar nada. Era em transform+blur que o custo estava. */
+  @keyframes eg-lamina{0%{opacity:.22;}100%{opacity:.92;}}
+  @keyframes eg-halo{0%{opacity:.62;}100%{opacity:1;}}
+  @keyframes eg-poeira{
+    0%{transform:translateY(0) translateX(0);opacity:0;}
+    12%{opacity:.9;}
+    88%{opacity:.55;}
+    100%{transform:translateY(-88vh) translateX(26px);opacity:0;}
+  }
+  @keyframes eg-desce{0%{top:-24px;opacity:0;}25%{opacity:1;}100%{top:64px;opacity:0;}}
+  @keyframes eg-pula{0%,100%{transform:translateY(0);}50%{transform:translateY(9px);}}
+  @keyframes eg-anel{0%{transform:scale(1);opacity:.75;}100%{transform:scale(1.75);opacity:0;}}
+  @keyframes eg-gira{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
+  @keyframes eg-corre{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+
+  @media (max-width:760px){
+    /* O logo caia no minimo do clamp e ficava pequeno perto do vazio da tela.
+       Aqui ele passa a acompanhar a largura do aparelho. */
+    .logo-grande{width:min(72vw,300px);}
+    /* sobe a seta: o selo do Netlify fica ancorado no canto inferior e
+       encostava nela */
+    .descer{bottom:11vh;}
+    /* O texto gigante nascia cortado pela borda de baixo e ainda passava por
+       cima do credito. Numa tela estreita ele nao cabe como marca d'agua sem
+       atrapalhar o que precisa ser lido. */
+    .gigante{display:none;}
+    .aro{width:96vw;} .aro2{width:74vw;}
+    /* No celular a cortina com `fixed` engasga: a barra de endereco entra e sai
+       e muda a altura da janela no meio da rolagem. Aqui vira bloco normal. */
+    .rodape-wrap{height:auto;clip-path:none;}
+    .rodape{position:relative;height:auto;min-height:100vh;}
+    .marquise{position:relative;top:0;margin-top:8vh;}
+    .rodape-centro{padding:8vh 20px 0;gap:26px;}
+    .pilula{width:100%;justify-content:center;}
+    .rodape-pe{padding:0 20px 26px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto;}
+    .raios i,.halo,.logo-grande,.seta,.seta::before,.seta::after,
+    .descer .fio::after,.aro2,.marquise-trilho,.poeira b,.fagulhas b{animation:none;}
+    .gigante,.rodape-titulo,.pilulas,.filete{transform:none;opacity:1;}
+  }
+
+  /* ---- credito do desenvolvedor, presente nas quatro telas do sistema ---- */
+  .dev-credito{
+    display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 14px;
+    font-size:11px;color:var(--eg-muted);letter-spacing:.02em;
+  }
+  .dev-credito b{color:var(--eg-gold-100);font-weight:700;}
+  .dev-credito a{color:var(--eg-muted);text-decoration:none;transition:color .25s ease;}
+  .dev-credito .dev-mail:hover{color:var(--eg-gold-300);text-decoration:underline;}
+  .dev-zap{
+    display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
+    border:1px solid rgba(201,151,75,.30);background:rgba(201,151,75,.07);font-weight:600;
+    transition:border-color .25s ease, color .25s ease, transform .25s ease, background .25s ease;
+  }
+  .dev-zap svg{width:13px;height:13px;color:#8fc79f;flex:none;}
+  .dev-zap:hover{border-color:#8fc79f;color:#8fc79f;transform:translateY(-1px);background:rgba(143,199,159,.10);}
+
+  /* ======================= CELULAR ======================= */
+  @media (max-width:640px){
+    /* o rodape tem tres blocos numa linha so; no celular eles empilham
+       centralizados em vez de se espremerem */
+    .rodape-pe{flex-wrap:wrap;justify-content:center;gap:16px;text-align:center;}
+    .dev-credito{width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<section class="abertura">
+  <div class="halo"></div>
+  <div class="raios"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="piso"></div>
+  <div class="poeira" id="poeira"></div>
+
+  <div class="logo-caixa">
+    <img class="logo-grande" src="/assets/logo-endogin.png" alt="Mentoria Endogin">
+  </div>
+
+  <div class="descer">
+    <span class="fio"></span>
+    <button class="seta" id="setaDesce" type="button" aria-label="Rolar para baixo">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v14M5.5 12.5 12 19l6.5-6.5"/></svg>
+    </button>
+  </div>
+</section>
+
+<div class="rodape-wrap" id="rodapeWrap">
+  <footer class="rodape">
+    <div class="aurora"></div>
+    <div class="aro"></div>
+    <div class="aro2"></div>
+    <div class="fagulhas" id="fagulhas"></div>
+    <div class="gigante" id="gigante">MENTORIA<br>ENDOGIN</div>
+
+    <div class="marquise">
+      <div class="marquise-trilho" id="marquiseTrilho"></div>
+    </div>
+
+    <div class="rodape-centro">
+      <hr class="filete" id="filete">
+      <h2 class="rodape-titulo" id="rodapeTitulo">Conhecimento que transforma consultórios e <em>vidas</em>.</h2>
+
+      <div class="pilulas" id="pilulas">
+        <a class="pilula magnetico" href="/Endogin_Area_CS_Live.html">
+          <span class="ico">&#128101;</span>
+          <span>Área CS<small>Para a equipe</small></span>
+        </a>
+        <a class="pilula magnetico" href="/Portal_Aluno_Live.html">
+          <span class="ico">&#127891;</span>
+          <span>Portal do Aluno<small>Para os mentorados</small></span>
+        </a>
+        <a class="pilula magnetico" href="/Area_Doutores_Live.html">
+          <span class="ico">&#128200;</span>
+          <span>Área de Mentores</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="rodape-pe">
+      <div class="credito">&copy; 2026 Mentoria Endogin</div>
+      <div class="dev-credito">
+        <span>Desenvolvido por <b>Luiz Jandoza</b></span>
+        <a class="dev-mail" href="mailto:luizjandoza6@gmail.com">luizjandoza6@gmail.com</a>
+        <a class="dev-zap" href="https://wa.me/5515991236697" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.23 8.23 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.23-8.24 8.23z"/><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.09 3.2 5.07 4.49.71.31 1.26.49 1.69.63.71.23 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z"/></svg><span>(15) 99123-6697</span></a>
+      </div>
+      <button class="topo-btn magnetico" id="voltarTopo" type="button" aria-label="Voltar ao topo">
+        <span>&uarr;</span>
+      </button>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var reduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------------- poeira dourada ----------------
+  // Geradas aqui e nao no HTML porque cada particula precisa de tamanho,
+  // posicao, duracao e atraso proprios. Escrever quarenta na mao seria pior de
+  // manter e, pior que isso, nao ficaria irregular de verdade.
+  function semeia(alvo, quantidade){
+    if(!alvo || reduzido) return;
+    var html = "";
+    for(var i = 0; i < quantidade; i++){
+      var tam = (2 + Math.random() * 4).toFixed(1);
+      var esq = (Math.random() * 100).toFixed(2);
+      var dur = (11 + Math.random() * 16).toFixed(1);
+      var atraso = (-Math.random() * 22).toFixed(1);
+      var base = (60 + Math.random() * 55).toFixed(0);
+      html += '<b style="width:' + tam + 'px;height:' + tam + 'px;left:' + esq + '%;top:' + base + '%;' +
+              'animation-duration:' + dur + 's;animation-delay:' + atraso + 's;"></b>';
+    }
+    alvo.innerHTML = html;
+  }
+  // Eram 42 e 30. Setenta e duas camadas animadas ao mesmo tempo e o que mais
+  // pesava na pagina; com menos e maiores o efeito se mantem e o custo cai.
+  semeia(document.getElementById("poeira"), 14);
+  semeia(document.getElementById("fagulhas"), 9);
+
+  // ---------------- marquise ----------------
+  // Trilho duplicado porque a animacao anda -50%: com uma copia so, a volta ao
+  // inicio apareceria como um salto.
+  var FRASES = [
+    "Acompanhamento de verdade", "Jornada do mentorado", "Sessões 1x1",
+    "Trilha de boas-vindas", "Renovação que se constrói"
+  ];
+  var trilho = document.getElementById("marquiseTrilho");
+  if(trilho){
+    var bloco = '<div class="marquise-item">' +
+      FRASES.map(function(f){ return "<span>" + f + "</span> <b>&#10022;</b>"; }).join(" ") +
+      '</div>';
+    trilho.innerHTML = bloco + bloco;
+  }
+
+  var temMouse = window.matchMedia("(hover: hover)").matches;
+
+  // ---------------- botoes magneticos ----------------
+  if(!reduzido && temMouse){
+    document.querySelectorAll(".magnetico").forEach(function(el){
+      el.addEventListener("mousemove", function(e){
+        var r = el.getBoundingClientRect();
+        var x = e.clientX - r.left - r.width / 2;
+        var y = e.clientY - r.top - r.height / 2;
+        el.style.transition = "transform .15s linear";
+        el.style.transform = "translate(" + (x * 0.28) + "px," + (y * 0.34) + "px) scale(1.04)";
+      });
+      el.addEventListener("mouseleave", function(){
+        el.style.transition = "transform .9s cubic-bezier(.18,1.6,.3,1)";
+        el.style.transform = "translate(0,0) scale(1)";
+      });
+    });
+  }
+
+  // ---------------- a luz acompanha o cursor ----------------
+  // Deslocamento pequeno de proposito: a luz reage a presenca da pessoa sem
+  // virar brinquedo. Em tela de toque nao existe, e nada se perde.
+  if(!reduzido && temMouse){
+    var halo = document.querySelector(".halo");
+    var raios = document.querySelector(".raios");
+    var abertura = document.querySelector(".abertura");
+    if(abertura && halo && raios){
+      // Antes isto escrevia margin-left a cada movimento do mouse, o que refaz
+      // o layout da pagina inteira. Agora e transform (nao toca no layout) e um
+      // quadro por vez, em vez de um por evento.
+      var alvoX = 0, agendado = false;
+      function aplica(){
+        agendado = false;
+        halo.style.transform = "translateX(calc(-50% + " + (alvoX * 42) + "px))";
+        raios.style.transform = "translateX(-50%) rotate(" + (alvoX * 2.4) + "deg)";
+      }
+      abertura.addEventListener("mousemove", function(e){
+        alvoX = e.clientX / window.innerWidth - 0.5;
+        if(agendado) return;
+        agendado = true;
+        window.requestAnimationFrame(aplica);
+      });
+    }
+  }
+
+  // ---------------- cortina ----------------
+  // Uma conta so: quanto do bloco da cortina ja subiu na janela. O numero vira
+  // variavel CSS e o resto e feito pelo proprio CSS.
+  var wrap = document.getElementById("rodapeWrap");
+  var gigante = document.getElementById("gigante");
+  var titulo = document.getElementById("rodapeTitulo");
+  var pilulas = document.getElementById("pilulas");
+  var filete = document.getElementById("filete");
+  var pendente = false;
+
+  function faixa(v, de, ate){
+    if(ate === de) return 0;
+    return Math.max(0, Math.min(1, (v - de) / (ate - de)));
+  }
+
+  function desenha(){
+    pendente = false;
+    if(!wrap) return;
+    var topo = wrap.getBoundingClientRect().top;
+    var altura = window.innerHeight || 1;
+    var p = Math.max(0, Math.min(1, 1 - topo / altura));
+    gigante.style.setProperty("--p", p.toFixed(3));
+    // o texto entra depois do fundo, senao tudo chega junto e a profundidade
+    // se perde
+    var q = faixa(p, 0.25, 0.85).toFixed(3);
+    [titulo, pilulas, filete].forEach(function(el){ el.style.setProperty("--q", q); });
+  }
+
+  function agenda(){
+    if(pendente) return;
+    pendente = true;
+    window.requestAnimationFrame(desenha);
+  }
+
+  if(!reduzido){
+    window.addEventListener("scroll", agenda, { passive: true });
+    window.addEventListener("resize", agenda);
+    desenha();
+  }
+
+  var seta = document.getElementById("setaDesce");
+  if(seta){
+    seta.addEventListener("click", function(){
+      window.scrollTo({ top: window.innerHeight, behavior: reduzido ? "auto" : "smooth" });
+    });
+  }
+  var btnTopo = document.getElementById("voltarTopo");
+  if(btnTopo){
+    btnTopo.addEventListener("click", function(){
+      window.scrollTo({ top: 0, behavior: reduzido ? "auto" : "smooth" });
+    });
+  }
+})();
+</script>
+</body>
+</html>

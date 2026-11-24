@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diretoria — Endogin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg-0:#080d17; --bg-1:#0e1a29; --bg-2:#152436; --bg-3:#1c2f4a;
+    --line:rgba(255,255,255,0.07); --line-2:rgba(255,255,255,0.14);
+    --gold:#c9974b; --gold-lit:#e3bd76; --gold-pale:#f2dfae;
+    --txt:#f3f0e8; --txt-2:#aab4c9; --txt-3:#6d7994;
+    --green:#8fc79f; --red:#d98a8a; --blue:#8fb3e0;
+    --sora:'Sora','Segoe UI',system-ui,sans-serif;
+    --mont:'Montserrat','Segoe UI',system-ui,sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --ease:cubic-bezier(.22,.75,.28,1);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg-0);color:var(--txt);font-family:var(--mont);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  a{color:var(--gold-lit);}
+  input,select,textarea{font-family:var(--mont);font-size:13px;background:var(--bg-2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:9px 11px;outline:none;transition:border-color .25s var(--ease);}
+  input:focus,select:focus,textarea:focus{border-color:var(--gold);}
+  label{display:block;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--txt-3);margin-bottom:6px;}
+
+  /* ---------------- login ---------------- */
+  .auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(900px 500px at 50% -10%,#12304f 0,#08131f 45%,#050b13 100%);}
+  .auth-card{width:100%;max-width:380px;background:rgba(14,26,41,.9);border:1px solid var(--line-2);border-radius:14px;padding:30px 28px;}
+  .auth-card h1{font-family:var(--sora);font-size:19px;font-weight:600;margin:0 0 4px;letter-spacing:.02em;}
+  .auth-card .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--gold);margin-bottom:8px;}
+  .auth-card p{margin:0 0 20px;font-size:12.5px;color:var(--txt-3);}
+  .auth-card .campo{margin-bottom:14px;}
+  .btn{font-family:var(--mont);font-size:13px;font-weight:600;border:0;border-radius:8px;padding:11px 18px;cursor:pointer;
+    background:linear-gradient(120deg,var(--gold-lit),var(--gold));color:#1a1206;
+    transition:transform .25s var(--ease),box-shadow .25s var(--ease);}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(201,151,75,.28);}
+  .btn:disabled{opacity:.6;transform:none;box-shadow:none;cursor:default;}
+  .btn-ghost{background:none;border:1px solid var(--line-2);color:var(--txt-2);}
+  .btn-ghost:hover{border-color:var(--gold);color:var(--txt);box-shadow:none;}
+  .btn-full{width:100%;}
+  .btn-mini{font-size:11px;padding:5px 11px;border-radius:6px;}
+  .acao-linha{display:inline-flex;gap:6px;}
+  .atualizado{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 2px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--txt-3);}
+  .wa{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;margin-left:7px;border-radius:5px;
+    color:var(--green);border:1px solid rgba(143,199,159,.32);font-size:10.5px;text-decoration:none;vertical-align:middle;
+    transition:background .2s var(--ease),border-color .2s var(--ease);}
+  .wa:hover{background:rgba(143,199,159,.14);border-color:rgba(143,199,159,.6);}
+  .sem-wa{margin-left:7px;font-size:10px;color:var(--txt-3);}
+  .erro{color:var(--red);font-size:12px;margin-top:10px;min-height:16px;}
+
+  /* ---------------- shell ---------------- */
+  .shell{display:none;min-height:100vh;grid-template-columns:236px 1fr;}
+  .side{background:var(--bg-1);border-right:1px solid var(--line);padding:22px 0 20px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .marca{display:flex;align-items:center;gap:10px;padding:0 20px;}
+  .marca-selo{width:30px;height:30px;border-radius:7px;flex:none;border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;
+    font-family:var(--sora);font-size:11px;font-weight:600;color:var(--gold-lit);letter-spacing:.04em;}
+  .marca-txt{font-family:var(--sora);font-size:13px;font-weight:600;letter-spacing:.14em;line-height:1.2;}
+  .marca-txt span{display:block;font-family:var(--mono);font-size:8.5px;font-weight:400;color:var(--txt-3);letter-spacing:.2em;margin-top:2px;}
+  .nav-grupo{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--txt-3);padding:0 20px;margin-bottom:7px;}
+  .nav{display:flex;flex-direction:column;margin-bottom:18px;}
+  .nav button{position:relative;display:block;width:100%;text-align:left;padding:9px 20px;font-family:var(--mont);font-size:13px;
+    color:var(--txt-2);background:none;border:0;cursor:pointer;transition:color .25s var(--ease),padding-left .25s var(--ease),background .25s var(--ease);}
+  .nav button::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:2px;background:var(--gold);transform:scaleY(0);transform-origin:top;transition:transform .3s var(--ease);}
+  .nav button:hover{color:var(--txt);padding-left:26px;background:rgba(255,255,255,.03);}
+  .nav button:hover::before{transform:scaleY(.5);}
+  .nav button.on{color:var(--txt);font-weight:600;background:rgba(201,151,75,.08);}
+  .nav button.on::before{transform:scaleY(1);}
+  .side-pe{margin-top:auto;padding:0 20px;font-size:11.5px;color:var(--txt-3);}
+  .side-pe b{display:block;color:var(--txt-2);font-size:12.5px;margin-bottom:2px;}
+  .sair{background:none;border:0;color:var(--txt-3);font-family:var(--mont);font-size:11.5px;cursor:pointer;padding:0;margin-top:10px;text-decoration:underline;}
+
+  .main{padding:26px 34px 50px;min-width:0;}
+  .topo{margin-bottom:26px;}
+  .topo .caminho{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--txt-3);margin-bottom:8px;}
+  .topo h2{font-family:var(--sora);font-size:26px;font-weight:600;margin:0 0 6px;letter-spacing:-.015em;}
+  .topo p{margin:0;color:var(--txt-2);font-size:13px;max-width:70ch;}
+
+  .vista{display:none;}
+  .vista.on{display:block;}
+  @keyframes sobe{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+  .vista.on > *{animation:sobe .45s var(--ease) both;}
+  .vista.on > *:nth-child(2){animation-delay:60ms;}
+  .vista.on > *:nth-child(3){animation-delay:120ms;}
+  .vista.on > *:nth-child(4){animation-delay:180ms;}
+  .vista.on > *:nth-child(n+5){animation-delay:240ms;}
+
+  /* ---------------- blocos ---------------- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:26px;}
+  .kpi{background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:16px 18px;transition:border-color .3s var(--ease),transform .3s var(--ease);}
+  .kpi:hover{border-color:var(--line-2);transform:translateY(-2px);}
+  .kpi .rot{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-3);margin-bottom:9px;}
+  .kpi .num{font-family:var(--sora);font-size:30px;font-weight:600;line-height:1;letter-spacing:-.02em;}
+  .kpi .num small{font-size:14px;font-weight:500;color:var(--txt-3);margin-left:2px;}
+  .kpi .sub{font-size:11.5px;color:var(--txt-3);margin-top:7px;}
+  .kpi.ok .num{color:var(--green);} .kpi.alerta .num{color:var(--gold-lit);} .kpi.risco .num{color:var(--red);}
+
+  .secao{margin-bottom:30px;}
+  .secao-cab{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:14px;flex-wrap:wrap;}
+  .secao-cab h3{font-family:var(--sora);font-size:14px;font-weight:600;margin:0;}
+  .secao-cab .nota{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--txt-3);}
+
+  .graficos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;}
+  .painel{background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:18px 20px;}
+  .painel h4{font-family:var(--sora);font-size:13px;font-weight:600;margin:0 0 3px;}
+  .painel .dica{font-size:11.5px;color:var(--txt-3);margin:0 0 14px;}
+  .tela-grafico{position:relative;height:230px;}
+
+  table{width:100%;border-collapse:collapse;}
+  th{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-3);text-align:left;font-weight:400;padding:0 10px 9px 0;border-bottom:1px solid var(--line);}
+  td{padding:11px 10px 11px 0;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top;}
+  tbody tr{transition:background .25s var(--ease);}
+  tbody tr:hover{background:rgba(255,255,255,.025);}
+  .tab-rolagem{overflow-x:auto;}
+  .principal{font-weight:600;}
+  .secundario{display:block;font-size:11px;color:var(--txt-3);margin-top:2px;}
+  .cod{font-family:var(--mono);font-size:11px;color:var(--gold-lit);}
+  .num-col{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;}
+
+  .selo{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;border-radius:4px;padding:3px 8px;border:1px solid var(--line-2);color:var(--txt-2);white-space:nowrap;}
+  .selo.ok{color:var(--green);border-color:rgba(143,199,159,.4);}
+  .selo.alerta{color:var(--gold-lit);border-color:rgba(227,189,118,.4);}
+  .selo.risco{color:var(--red);border-color:rgba(217,138,138,.4);}
+  .selo.frio{color:var(--blue);border-color:rgba(143,179,224,.4);}
+
+  .barra{height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:6px;min-width:90px;}
+  .barra i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-lit));width:0;transition:width .9s var(--ease);}
+
+  .filtros{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
+  .chip{font-family:var(--mont);font-size:11.5px;color:var(--txt-2);background:none;border:1px solid var(--line-2);border-radius:20px;padding:6px 13px;cursor:pointer;
+    transition:background .25s var(--ease),color .25s var(--ease),border-color .25s var(--ease),transform .25s var(--ease);}
+  .chip:hover{transform:translateY(-2px);border-color:rgba(201,151,75,.45);color:var(--txt);}
+  .chip.on{background:rgba(201,151,75,.16);border-color:rgba(201,151,75,.5);color:var(--gold-pale);font-weight:600;}
+
+  .vazio{font-size:12.5px;color:var(--txt-3);padding:16px 0;line-height:1.6;}
+
+  /* motivos de risco: o que faz o mentorado aparecer na lista */
+  .motivos{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+  .motivo{font-family:var(--mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;
+    border-radius:3px;padding:2px 6px;border:1px solid var(--line-2);color:var(--txt-3);white-space:nowrap;}
+  .motivo.grave{color:var(--red);border-color:rgba(217,138,138,.4);background:rgba(217,138,138,.07);}
+  .motivo.medio{color:var(--gold-lit);border-color:rgba(227,189,118,.35);}
+  .risco-nota{font-family:var(--sora);font-size:19px;font-weight:600;line-height:1;}
+  .risco-nota.alto{color:var(--red);} .risco-nota.medio{color:var(--gold-lit);} .risco-nota.baixo{color:var(--green);}
+  .risco-faixa{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt-3);display:block;margin-top:3px;}
+  .aviso-caixa{background:rgba(201,151,75,.08);border:1px solid rgba(201,151,75,.28);border-radius:9px;padding:13px 16px;font-size:12.5px;color:var(--txt-2);margin-bottom:18px;line-height:1.6;}
+  .aviso-caixa b{color:var(--gold-pale);}
+
+  .formulario{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px;}
+  .formulario .largo{grid-column:1/-1;}
+  .formulario input,.formulario select,.formulario textarea{width:100%;}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px;}
+
+  @media(max-width:900px){
+    .shell{grid-template-columns:1fr;}
+    .side{position:static;height:auto;flex-direction:row;align-items:center;gap:14px;overflow-x:auto;padding:12px 0;}
+    .nav{flex-direction:row;margin-bottom:0;}
+    .nav-grupo{display:none;}
+    .nav button{white-space:nowrap;}
+    .side-pe{margin-top:0;}
+    .main{padding:20px 18px 40px;}
+  }
+  @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition-duration:.01ms!important;} }
+
+  /* ---- credito do desenvolvedor, presente nas quatro telas do sistema ---- */
+  .dev-credito{
+    display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 16px;
+    margin:34px auto 0;padding:20px 16px 26px;border-top:1px solid var(--line);
+    font-size:11px;color:var(--txt-3);letter-spacing:.02em;
+  }
+  .dev-credito b{color:var(--gold-pale);font-weight:700;}
+  .dev-credito a{color:var(--txt-3);text-decoration:none;transition:color .25s ease;}
+  .dev-credito .dev-mail:hover{color:var(--gold-lit);text-decoration:underline;}
+  .dev-zap{
+    display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
+    border:1px solid var(--line-2);background:rgba(255,255,255,.03);font-weight:600;
+    transition:border-color .25s ease, color .25s ease, transform .25s ease, background .25s ease;
+  }
+  .dev-zap svg{width:13px;height:13px;color:#8fc79f;flex:none;}
+  .dev-zap:hover{border-color:#8fc79f;color:#8fc79f;transform:translateY(-1px);background:rgba(143,199,159,.10);}
+
+  /* ======================= CELULAR ======================= */
+  /* O iOS amplia a pagina inteira quando o foco cai num campo com fonte menor
+     que 16px — e nao desfaz o zoom depois. E a causa mais comum de "quebrou no
+     celular" que nao tem nada a ver com layout. */
+  @media (max-width:760px){
+    select,textarea,
+    input[type=text],input[type=email],input[type=password],input[type=number],
+    input[type=date],input[type=datetime-local],input[type=tel],input[type=search],
+    input[type=time],input[type=url],input[type=month],
+    .search-input{font-size:16px;}
+  }
+
+  @media (max-width:640px){
+    .main{padding:18px 14px 40px;}
+    .painel{padding:15px 15px;}
+    .formulario{grid-template-columns:1fr;}
+    .filtros{flex-direction:column;align-items:stretch;}
+    .filtros > *{width:100% !important;min-width:0 !important;}
+    .tab-rolagem{-webkit-overflow-scrolling:touch;}
+    .tab-rolagem table{font-size:11.5px;}
+    .topo h2{font-size:25px;}
+    .acao-linha{flex-wrap:wrap;}
+  }
+
+  /* ---- graficos EG (SVG puro): rosca animada e linha com brilho ---- */
+  .eg-donut{display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
+  .eg-donut-svg{position:relative;flex:0 0 auto;}
+  .eg-donut-svg svg{display:block;overflow:visible;transform:rotate(-90deg);}
+  .eg-donut-svg circle.seg{transition:stroke-dashoffset 1.1s cubic-bezier(.16,1,.3,1),filter .2s ease,transform .2s ease;transform-box:fill-box;transform-origin:center;cursor:pointer;}
+  .eg-donut-svg circle.seg.ativo{filter:drop-shadow(0 0 6px currentColor) brightness(1.1);transform:scale(1.03);}
+  .eg-donut-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;padding:0 26px;}
+  .eg-donut-centro .rot{font-size:11px;color:#8792a8;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .eg-donut-centro .num{font-family:'Sora',sans-serif;font-size:30px;font-weight:700;line-height:1.1;color:#f3f0e8;transition:transform .2s ease;}
+  .eg-donut-centro .pct{font-size:13px;color:#e3bd76;font-weight:600;}
+  .eg-donut-legenda{flex:1 1 150px;min-width:0;display:flex;flex-direction:column;gap:3px;}
+  .eg-donut-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 9px;border-radius:8px;cursor:pointer;transition:background .2s ease,transform .2s ease;}
+  .eg-donut-item:hover,.eg-donut-item.ativo{background:rgba(255,255,255,.05);transform:translateX(2px);}
+  .eg-donut-item .l{display:flex;align-items:center;gap:9px;font-size:12px;color:#f3f0e8;min-width:0;}
+  .eg-donut-item .l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .eg-donut-item i.b{width:10px;height:10px;border-radius:50%;flex:none;}
+  .eg-donut-item b{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#8792a8;white-space:nowrap;}
+  .eg-linha{position:relative;width:100%;}
+  .eg-linha svg{display:block;width:100%;height:auto;overflow:visible;}
+  .eg-linha .dica{position:absolute;pointer-events:none;background:#0e1a29;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:8px 10px;font-size:11.5px;box-shadow:0 12px 30px rgba(0,0,0,.6);transform:translate(-50%,-118%);white-space:nowrap;opacity:0;transition:opacity .15s;z-index:2;}
+  .eg-linha .dica b{display:block;font-size:14px;color:#f3f0e8;font-family:'Sora',sans-serif;}
+  .eg-linha .dica span{color:#8792a8;}
+  /* ---- evento ---- */
+  .ev-capa{
+    position:relative;overflow:hidden;border-radius:14px;padding:30px 32px;margin-bottom:22px;
+    border:1px solid rgba(227,189,118,.28);
+    background:
+      radial-gradient(700px 260px at 0% 0%, rgba(227,189,118,.16), transparent 60%),
+      radial-gradient(500px 240px at 100% 100%, rgba(143,179,224,.12), transparent 60%),
+      linear-gradient(160deg,#0f1f33,#08131f);
+  }
+  .ev-capa::after{content:"";position:absolute;inset:0;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><circle cx='60' cy='60' r='58' fill='none' stroke='%23e3bd76' stroke-opacity='.06'/></svg>") right -20px top -20px no-repeat;pointer-events:none;}
+  .ev-capa .rot{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--gold-lit);text-transform:uppercase;}
+  .ev-capa h2{font-family:'Sora',sans-serif;font-size:30px;font-weight:700;margin:6px 0 4px;letter-spacing:-.01em;color:#f3f0e8;}
+  .ev-capa .sub{color:var(--txt-2);font-size:13.5px;margin:0;}
+  .ev-capa .faltam{position:absolute;right:30px;top:26px;text-align:right;}
+  .ev-capa .faltam b{display:block;font-family:'Sora',sans-serif;font-size:40px;line-height:1;color:var(--gold-lit);}
+  .ev-capa .faltam span{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--txt-3);text-transform:uppercase;}
+  .ev-grid{display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:18px;margin-bottom:22px;}
+  .ev-barra{height:10px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;display:flex;margin:14px 0 8px;}
+  .ev-barra i{display:block;height:100%;}
+  .ev-legenda{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--txt-2);}
+  .ev-legenda b{color:#f3f0e8;}
+  .ev-legenda i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px;}
+  .ev-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;}
+  .ev-item{background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:12.5px;}
+  .ev-item b{display:block;color:#f3f0e8;font-weight:600;}
+  .ev-item span{color:var(--txt-3);font-size:11px;}
+  @media (max-width:760px){ .ev-grid{grid-template-columns:1fr;} .ev-capa .faltam{position:static;text-align:left;margin-top:12px;} .ev-capa h2{font-size:24px;} }
+
+  .barras{display:flex;flex-direction:column;gap:7px;}
+  .barra-linha{display:grid;grid-template-columns:minmax(110px,34%) 1fr auto;align-items:center;gap:10px;font-size:12.5px;}
+  .barra-linha .rotulo{color:var(--txt-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .barra-linha .trilho{height:9px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;}
+  .barra-linha .trilho i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8a6b30,#e3bd76);}
+  .barra-linha .valor{font-family:var(--mono);font-size:11.5px;color:var(--txt-3);min-width:56px;text-align:right;}
+  .barra-vazia{font-size:12px;color:var(--txt-3);font-style:italic;}
+
+  .eg-hero{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 28px;margin-bottom:6px;}
+  .eg-hero .rot{font-size:12px;color:#8792a8;font-weight:600;width:100%;}
+  .eg-hero .num{font-family:'Sora',sans-serif;font-size:36px;font-weight:700;line-height:1;color:#f3f0e8;}
+  .eg-hero .var{font-size:13px;font-weight:600;color:#8fc79f;}
+  .eg-hero .var.neg{color:#d98a8a;}
+  .eg-hero .var small{font-weight:500;color:#8792a8;margin-left:4px;}
+  .eg-stats{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:12px;color:#8792a8;margin:10px 0 4px;}
+  .eg-stats b{color:#f3f0e8;font-family:'JetBrains Mono',monospace;font-weight:600;}
+  .eg-stats b.ouro{color:#e3bd76;} .eg-stats b.azul{color:#8fb3e0;} .eg-stats b.verde{color:#8fc79f;}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div class="auth" id="telaLogin">
+  <form class="auth-card" id="formLogin">
+    <div class="eyebrow">MENTORIA ENDOGIN</div>
+    <h1>Área da Diretoria</h1>
+    <p>Acesso do Dr. Caio e do Dr. Vinícius ao panorama da mentoria.</p>
+    <div class="campo"><label for="loginEmail">E-mail</label><input type="email" id="loginEmail" style="width:100%;" autocomplete="username" required></div>
+    <div class="campo"><label for="loginSenha">Senha</label><input type="password" id="loginSenha" style="width:100%;" autocomplete="current-password" required></div>
+    <div id="turnstileBox" style="margin:0 0 10px;"></div>
+    <button class="btn btn-full" type="submit" id="btnEntrar">Entrar</button>
+    <div class="erro" id="loginErro"></div>
+  </form>
+</div>
+
+<!-- ===================== APLICAÇÃO ===================== -->
+<div class="shell" id="shell">
+  <aside class="side">
+    <div class="marca">
+      <div class="marca-selo">EG</div>
+      <div class="marca-txt">ENDOGIN<span>DIRETORIA</span></div>
+    </div>
+
+    <div>
+      <div class="nav-grupo">OPERAÇÃO</div>
+      <nav class="nav" id="nav">
+        <button class="on" data-v="panorama">Visão geral</button>
+        <button data-v="atencao">Precisam de atenção</button>
+        <button data-v="disc">Perfil DISC</button>
+      </nav>
+      <div class="nav-grupo">CONTEÚDO</div>
+      <nav class="nav" id="nav2">
+        <button data-v="cursos">Aulas gravadas</button>
+        <button data-v="materiais">Materiais</button>
+      </nav>
+      <div class="nav-grupo">ENGAJAMENTO</div>
+      <nav class="nav" id="nav3">
+        <button data-v="aovivo">Aulas ao vivo</button>
+        <button data-v="recados">Recados</button>
+      </nav>
+      <div class="nav-grupo">EVENTOS</div>
+      <nav class="nav" id="nav4">
+        <button data-v="evento">Evento de Mentalidade</button>
+      </nav>
+    </div>
+
+    <div class="side-pe">
+      <b id="quemSou">—</b>
+      <span>Diretoria</span>
+      <div class="atualizado">
+        <span id="ultimaAtualizacao">—</span>
+        <button class="btn btn-ghost btn-mini" id="btnAtualizar">Atualizar</button>
+      </div>
+      <button class="sair" id="btnSair">Sair</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ============ VISÃO GERAL ============ -->
+    <section class="vista on" id="v-panorama">
+      <div class="topo">
+        <div class="caminho">DIRETORIA</div>
+        <h2>Visão geral</h2>
+        <p>O retrato da mentoria hoje: quem está ativo, quem está esfriando, quem vence e como andam as aulas.</p>
+      </div>
+
+      <div class="kpis" id="kpis"></div>
+
+      <div class="secao">
+        <div class="secao-cab"><h3>Crescimento da base</h3><span class="nota">entradas por mês, últimos 12 meses</span></div>
+        <div class="painel">
+          <div class="eg-hero" id="heroCresc"></div>
+          <div class="eg-stats" id="statsCresc"></div>
+          <div id="gCresc"></div>
+        </div>
+      </div>
+
+      <div class="secao">
+        <div class="secao-cab"><h3>O que sustenta a renovação</h3><span class="nota">sinais que pesam na hora de renovar</span></div>
+        <div class="kpis" id="kpisRenovacao"></div>
+      </div>
+
+      <div class="secao">
+        <div class="secao-cab"><h3>Composição da base</h3><span class="nota" id="notaBase"></span></div>
+        <div class="graficos">
+          <div class="painel">
+            <h4>Por situação</h4>
+            <p class="dica">Ativo, onboarding, trancado, inativo.</p>
+            <div id="dStatus"></div>
+          </div>
+          <div class="painel">
+            <h4>Por temperatura</h4>
+            <p class="dica">Leitura da CS sobre o engajamento de cada mentorado.</p>
+            <div id="dTemp"></div>
+          </div>
+          <div class="painel">
+            <h4>Por mentoria</h4>
+            <p class="dica">Quantos mentorados ativos cada braço tem.</p>
+            <div class="tela-grafico"><canvas id="gMentoria"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="secao">
+        <div class="secao-cab"><h3>Quem são os mentorados</h3><span class="nota" id="notaPerfil"></span></div>
+        <div class="graficos">
+          <div class="painel">
+            <h4>Por especialidade</h4>
+            <p class="dica">A formação de cada mentorado, como a CS registrou.</p>
+            <div id="dEspecialidade"></div>
+          </div>
+          <div class="painel">
+            <h4>Por estado</h4>
+            <p class="dica">De onde eles atendem — útil pra encontro presencial e turma regional.</p>
+            <div id="dEstado"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="secao">
+        <div class="secao-cab"><h3>Movimento da base</h3><span class="nota" id="notaMovimento">entradas, vencimentos, carteiras e temperatura</span></div>
+        <div class="graficos">
+          <div class="painel">
+            <h4>Entradas por mês</h4>
+            <p class="dica">Quantos mentorados entraram em cada mês, últimos 12 meses.</p>
+            <div class="tela-grafico"><canvas id="gEntradas"></canvas></div>
+          </div>
+          <div class="painel">
+            <h4>Vencimentos por mês</h4>
+            <p class="dica">Quantos contratos vencem em cada um dos próximos 6 meses — é a agenda de renovação.</p>
+            <div class="tela-grafico"><canvas id="gVencimentos"></canvas></div>
+          </div>
+          <div class="painel">
+            <h4>Mentorados por CS</h4>
+            <p class="dica">Tamanho da carteira de cada CS, só ativos.</p>
+            <div class="tela-grafico"><canvas id="gPorCs"></canvas></div>
+          </div>
+          <div class="painel">
+            <h4>Temperatura por mentoria</h4>
+            <p class="dica">Quente, morno e frio dentro de cada braço. Barra vermelha alta é onde a renovação está em risco.</p>
+            <div class="tela-grafico"><canvas id="gTempMentoria"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="secao">
+        <div class="secao-cab"><h3>Vencimentos</h3><span class="nota" id="notaVencimentos"></span></div>
+        <div class="chips" id="chipsVenc" style="margin-bottom:12px;">
+          <button class="chip" data-venc="vencidos">Já vencidos</button>
+          <button class="chip on" data-venc="30">Próximos 30 dias</button>
+          <button class="chip" data-venc="60">Próximos 60 dias</button>
+          <button class="chip" data-venc="90">Próximos 90 dias</button>
+          <button class="chip" data-venc="180">Próximos 6 meses</button>
+          <button class="chip" data-venc="todos">Todos com data</button>
+          <button class="chip" data-venc="semdata">Sem data / vitalícios</button>
+        </div>
+        <p class="dica" style="margin:-4px 0 10px;">"Vencido" e ainda ativo quer dizer que o contrato passou da data e a CS ainda não registrou renovação nem desligamento — é a lista pra cobrar da CS. A data é a mesma da ficha na Área CS (a menor entre as mentorias do mentorado).</p>
+        <div class="tab-rolagem">
+          <table>
+            <thead><tr><th>Mentorado</th><th>Mentoria</th><th>CS</th><th>Entrou</th><th>Vence</th><th>Situação</th></tr></thead>
+            <tbody id="tabVencimentos"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PRECISAM DE ATENÇÃO ============ -->
+    <section class="vista" id="v-atencao">
+      <div class="topo">
+        <div class="caminho">DIRETORIA</div>
+        <h2>Precisam de atenção</h2>
+        <p>Os mentorados ordenados por risco de não renovar. Cada linha mostra <b>por que</b> ele apareceu aqui — não é um palpite, são os sinais que o sistema já registra.</p>
+      </div>
+
+      <div class="aviso-caixa">
+        <b>Como ler:</b> a nota soma sinais objetivos — contrato vencendo, inadimplência, NPS baixo, pouco consumo de aula, ausência nas aulas ao vivo, 1x1 nunca realizado e a temperatura que a CS registrou. Quanto maior, mais o mentorado está escorregando. Esta tela é só leitura: quem age na ficha é a CS.
+      </div>
+
+      <div class="kpis" id="kpisAtencao"></div>
+
+      <div class="filtros">
+        <div style="flex:1;min-width:220px;"><label>Buscar</label><input type="text" id="buscaAluno" placeholder="nome ou e-mail" style="width:100%;"></div>
+        <div><label>Mentoria</label><select id="filtroMentoria"><option value="">Todas</option></select></div>
+        <div><label>CS</label><select id="filtroCs"><option value="">Todas</option></select></div>
+        <div style="align-self:flex-end;padding-bottom:2px;">
+          <button class="chip on" id="chipSoRisco">Só quem tem sinal de risco</button>
+        </div>
+      </div>
+
+      <div class="secao-cab"><h3>Lista</h3><span class="nota" id="contaAlunos"></span></div>
+      <div class="tab-rolagem">
+        <table>
+          <thead><tr><th style="width:70px;">Risco</th><th>Mentorado</th><th>Por quê</th><th>Mentoria</th><th>CS</th><th>Vence</th></tr></thead>
+          <tbody id="tabAlunos"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ AULAS GRAVADAS ============ -->
+    <!-- ============ PERFIL DISC ============ -->
+    <section class="vista" id="v-disc">
+      <div class="topo">
+        <div class="caminho">DIRETORIA</div>
+        <h2>Perfil DISC</h2>
+        <p>O teste comportamental que cada mentorado responde no primeiro acesso ao Portal. <b>D</b> Dominância · <b>I</b> Influência · <b>S</b> Estabilidade · <b>C</b> Conformidade. Cada letra vai de −12 a +12; a dominante é a maior.</p>
+      </div>
+
+      <div class="kpis" id="kpisDisc"></div>
+
+      <div class="filtros">
+        <div style="flex:1;min-width:220px;"><label>Buscar</label><input type="text" id="discBusca" placeholder="nome ou e-mail" style="width:100%;"></div>
+        <div><label>Mentoria</label><select id="discMentoria"><option value="">Todas</option></select></div>
+        <div><label>CS</label><select id="discCs"><option value="">Todas</option></select></div>
+        <div><label>Perfil dominante</label>
+          <select id="discPerfil">
+            <option value="">Todos</option>
+            <option value="D">D — Dominância</option>
+            <option value="I">I — Influência</option>
+            <option value="S">S — Estabilidade</option>
+            <option value="C">C — Conformidade</option>
+          </select>
+        </div>
+        <div><label>Teste</label>
+          <select id="discSit">
+            <option value="">Todos</option>
+            <option value="sim">Já respondeu</option>
+            <option value="nao">Ainda não respondeu</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="graficos" style="margin-bottom:24px;">
+        <div class="painel">
+          <h4>Por perfil dominante</h4>
+          <p class="dica">Quantos mentorados têm cada perfil como o mais forte.</p>
+          <div id="dDiscPerfis"></div>
+        </div>
+        <div class="painel">
+          <h4>Média das quatro dimensões</h4>
+          <p class="dica">O perfil médio da base no recorte escolhido.</p>
+          <div class="tela-grafico"><canvas id="gDiscMedias"></canvas></div>
+        </div>
+      </div>
+
+      <div id="discDetalhe" style="display:none;margin-bottom:24px;"></div>
+
+      <div class="secao-cab"><h3>Mentorados</h3><span class="nota" id="notaDisc"></span></div>
+      <div class="tab-rolagem">
+        <table>
+          <thead><tr><th>Mentorado</th><th>Mentoria</th><th>CS</th><th>Dominante</th><th>D</th><th>I</th><th>S</th><th>C</th><th>Quando</th></tr></thead>
+          <tbody id="tabDisc"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="vista" id="v-cursos">
+      <div class="topo">
+        <div class="caminho">CONTEÚDO</div>
+        <h2>Aulas gravadas</h2>
+        <p>Conclusão média de cada curso da Cademí, calculada sobre os mentorados que têm acesso a ele.</p>
+      </div>
+      <div class="kpis" id="kpisCursos"></div>
+      <div class="secao">
+        <div class="secao-cab"><h3>Desempenho por curso</h3><span class="nota" id="notaCursos"></span></div>
+        <div class="tab-rolagem">
+          <table>
+            <thead><tr><th>Curso</th><th>Mentorados com acesso</th><th>Conclusão média</th></tr></thead>
+            <tbody id="tabCursos"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MATERIAIS ============ -->
+    <section class="vista" id="v-materiais">
+      <div class="topo">
+        <div class="caminho">CONTEÚDO</div>
+        <h2>Materiais</h2>
+        <p>Biblioteca versionada: cada protocolo tem código, versão, data de revisão e responsável. Só a versão vigente fica disponível para o mentorado.</p>
+      </div>
+
+      <div class="painel" style="margin-bottom:24px;">
+        <h4>Publicar material</h4>
+        <p class="dica">O arquivo entra como versão vigente e aparece na hora para os mentorados da mentoria escolhida.</p>
+        <div class="formulario">
+          <div class="largo"><label>Título</label><input type="text" id="matTitulo" placeholder="ex: Protocolo de TRH feminina"></div>
+          <div><label>Código</label><input type="text" id="matCodigo" placeholder="ex: PROT-TRHF-011"></div>
+          <div><label>Versão</label><input type="text" id="matVersao" placeholder="ex: v3.1"></div>
+          <div><label>Categoria</label><input type="text" id="matCategoria" placeholder="ex: TRH Feminina"></div>
+          <div><label>Tipo</label><input type="text" id="matTipo" placeholder="ex: PDF, Checklist"></div>
+          <div><label>Responsável</label><input type="text" id="matResponsavel" placeholder="ex: Dr. Caio Saraiva"></div>
+          <div><label>Mentoria</label><select id="matMentoria"><option value="">Todas as mentorias</option></select></div>
+          <div class="largo"><label>Arquivo</label><input type="file" id="matArquivo" style="width:100%;"></div>
+        </div>
+        <button class="btn" id="btnPublicarMat">Publicar material</button>
+        <div class="erro" id="matErro"></div>
+      </div>
+
+      <div class="secao-cab"><h3>Biblioteca</h3><span class="nota" id="notaMateriais"></span></div>
+      <div class="tab-rolagem">
+        <table>
+          <thead><tr><th>Documento</th><th>Versão</th><th>Revisão</th><th>Responsável</th><th>Mentoria</th><th>Status</th><th style="width:52px;"></th></tr></thead>
+          <tbody id="tabMateriais"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ AO VIVO ============ -->
+    <!-- ============ EVENTO ============ -->
+    <section class="vista" id="v-evento">
+      <div class="topo">
+        <div class="caminho">EVENTOS</div>
+        <h2>Evento de Mentalidade</h2>
+        <p>Quem confirmou presença pelo formulário. Esta tela só mostra — quem responde é o mentorado, e quem ajusta na mão é a CS.</p>
+      </div>
+
+      <div class="ev-capa">
+        <div class="rot">Mentoria Mãe · presencial</div>
+        <h2>Evento de Mentalidade</h2>
+        <p class="sub">17 de outubro de 2026 · confirmações abertas até o prazo do formulário</p>
+        <div class="faltam"><b id="evDias">—</b><span>dias para o evento</span></div>
+      </div>
+
+      <div class="kpis" id="evKpis"></div>
+
+      <div class="ev-grid">
+        <div class="painel">
+          <h4>Como está a resposta</h4>
+          <p class="dica">Base: mentorados ativos da Mentoria Mãe.</p>
+          <div id="evDonut"></div>
+        </div>
+        <div class="painel">
+          <h4>Confirmações ao longo dos dias</h4>
+          <p class="dica">Acumulado de "vou participar" por dia de resposta.</p>
+          <div id="evLinha"></div>
+          <div class="ev-barra" id="evBarra"></div>
+          <div class="ev-legenda" id="evLegenda"></div>
+        </div>
+      </div>
+
+      <div class="graficos" style="margin-bottom:22px;">
+        <div class="painel">
+          <h4>Restrições alimentares</h4>
+          <p class="dica">Entre quem confirmou — é o que vai pro buffet.</p>
+          <div class="ev-lista" id="evRestricoes"></div>
+        </div>
+        <div class="painel">
+          <h4>Necessidades especiais</h4>
+          <p class="dica">Entre quem confirmou — acessibilidade e estrutura.</p>
+          <div class="ev-lista" id="evNecessidades"></div>
+        </div>
+      </div>
+
+      <div class="secao">
+        <div class="secao-cab"><h3>Lista</h3><span class="nota" id="evNota"></span></div>
+        <div class="chips" id="chipsEv" style="margin-bottom:12px;">
+          <button class="chip on" data-ev="confirmado">Confirmados</button>
+          <button class="chip" data-ev="nao_vai">Não vão</button>
+          <button class="chip" data-ev="sem_resposta">Ainda não responderam</button>
+          <button class="chip" data-ev="conjuge">Levam cônjuge</button>
+          <button class="chip" data-ev="todos">Todos</button>
+        </div>
+        <div class="tab-rolagem">
+          <table>
+            <thead><tr><th>Mentorado</th><th>Credencial</th><th>Situação</th><th>Cônjuge</th><th>Restrição alimentar</th><th>Necessidade especial</th><th>CS</th><th>Respondeu em</th></tr></thead>
+            <tbody id="tabEvento"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="vista" id="v-aovivo">
+      <div class="topo">
+        <div class="caminho">ENGAJAMENTO</div>
+        <h2>Aulas ao vivo</h2>
+        <p>As aulas semanais e os encontros cadastrados, com quantos mentorados clicaram para entrar.</p>
+      </div>
+
+      <div class="aviso-caixa" id="avisoZoom">
+        <b>Presença confirmada ainda não existe.</b> O número abaixo é de <b>cliques no botão de entrar</b>, medido pela própria plataforma — mostra intenção, não permanência na sala. A presença real depende da credencial da API do Zoom, que ainda não foi configurada; quando for, ela entra nesta mesma tela.
+      </div>
+
+      <div class="kpis" id="kpisAoVivo"></div>
+
+      <div class="painel" id="painelAula" style="display:none;margin-bottom:24px;">
+        <h4 id="aulaPainelTitulo">Editar aula</h4>
+        <p class="dica">Muda o que ja esta no calendario. Quem cria e apaga aula continua sendo a CS, na aba Calendario — assim a agenda tem um dono so.</p>
+        <div class="formulario">
+          <div class="largo"><label>Titulo</label><input type="text" id="aulaTitulo"></div>
+          <div><label>Tipo</label>
+            <select id="aulaTipo">
+              <option value="semanal">Semanal (toda semana)</option>
+              <option value="evento">Encontro (data unica)</option>
+            </select>
+          </div>
+          <div><label>Mentoria</label><select id="aulaMentoria"><option value="">Todas as mentorias</option></select></div>
+          <div id="aulaDiaWrap"><label>Dia da semana</label>
+            <select id="aulaDia">
+              <option value="segunda">Segunda</option>
+              <option value="terca">Terca</option>
+              <option value="quarta">Quarta</option>
+              <option value="quinta">Quinta</option>
+              <option value="sexta">Sexta</option>
+              <option value="sabado">Sabado</option>
+              <option value="domingo">Domingo</option>
+            </select>
+          </div>
+          <div id="aulaDataWrap" style="display:none;"><label>Data</label><input type="date" id="aulaData"></div>
+          <div><label>Horario</label><input type="time" id="aulaHora"></div>
+          <div><label>Duracao (minutos)</label><input type="number" id="aulaDuracao" min="0"></div>
+          <div><label>Categoria</label>
+            <select id="aulaCategoria">
+              <option value="Geral">Geral</option>
+              <option value="Vendas">Vendas</option>
+              <option value="Pro Hormonal">Pro Hormonal</option>
+              <option value="Encontros">Encontros</option>
+              <option value="Endogin Black Belt">Endogin Black Belt</option>
+              <option value="Endogin Mentores Masters">Endogin Mentores Masters</option>
+            </select>
+          </div>
+          <div><label>Capa (link da imagem)</label><input type="text" id="aulaCapa" placeholder="https://..."></div>
+          <div class="largo"><label>Descricao curta</label><input type="text" id="aulaDescricao"></div>
+          <div class="largo"><label>Link da aula / encontro</label><input type="text" id="aulaLink" placeholder="https://..."></div>
+          <div class="largo"><label>ID da reuniao no Zoom</label><input type="text" id="aulaZoom" placeholder="ex: 812 3456 7890"></div>
+        </div>
+        <div class="acao-linha">
+          <button class="btn" id="btnSalvarAula">Salvar alteracoes</button>
+          <button class="btn btn-ghost" id="btnCancelarAula">Cancelar</button>
+        </div>
+        <div class="erro" id="aulaErro"></div>
+      </div>
+
+      <div class="secao-cab"><h3>Agenda e engajamento</h3><span class="nota" id="notaAoVivo"></span></div>
+      <div class="tab-rolagem">
+        <table>
+          <thead><tr><th>Aula / encontro</th><th>Quando</th><th>Mentoria</th><th>Cliques (total)</th><th>Últimos 7 dias</th><th style="width:52px;"></th></tr></thead>
+          <tbody id="tabAoVivo"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ RECADOS ============ -->
+    <section class="vista" id="v-recados">
+      <div class="topo">
+        <div class="caminho">ENGAJAMENTO</div>
+        <h2>Recados</h2>
+        <p>O que os mentorados veem no aviso da Jornada, dentro do Portal do Aluno.</p>
+      </div>
+      <div class="painel" style="margin-bottom:24px;">
+        <h4 id="recPainelTitulo">Publicar recado</h4>
+        <p class="dica">Escolha para quais mentorias vai. Quem for dessas mentorias ve o recado na Jornada, dentro do Portal do Aluno.</p>
+        <div class="formulario">
+          <div class="largo"><label>Titulo (opcional)</label><input type="text" id="recTitulo" placeholder="ex: Aula extra nesta quinta"></div>
+          <div class="largo"><label>Mensagem</label><textarea id="recMensagem" rows="3" placeholder="Escreva o recado"></textarea></div>
+          <div><label>Link (opcional)</label><input type="text" id="recLink" placeholder="https://..."></div>
+          <div><label>Vence em (opcional)</label><input type="date" id="recVence"></div>
+          <div class="largo"><label>Mentorias</label><div class="chips" id="recChips"></div></div>
+        </div>
+        <div class="acao-linha">
+          <button class="btn" id="btnPublicarRec">Publicar recado</button>
+          <button class="btn btn-ghost" id="btnCancelarRec" style="display:none;">Cancelar edicao</button>
+        </div>
+        <div class="erro" id="recErro"></div>
+      </div>
+
+      <div class="secao-cab"><h3>Publicados</h3><span class="nota" id="notaRecados"></span></div>
+      <div id="listaRecados"></div>
+    </section>
+
+    <div class="dev-credito">
+      <span>Desenvolvido por <b>Luiz Jandoza</b></span>
+      <a class="dev-mail" href="mailto:luizjandoza6@gmail.com">luizjandoza6@gmail.com</a>
+      <a class="dev-zap" href="https://wa.me/5515991236697" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.23 8.23 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.23-8.24 8.23z"/><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.09 3.2 5.07 4.49.71.31 1.26.49 1.69.63.71.23 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z"/></svg><span>(15) 99123-6697</span></a>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var SUPABASE_URL = "https://pguyeowngwrolrrqbopw.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_6dfrX0H6V43eI6WjnKR4Yg_VcgsyXBc";
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var eu = null;
+  var alunos = [], branches = [], graficos = {};
+  var perfil = {};   // student_id -> sinais coletados de outras tabelas
+  var soRisco = true;
+
+  // ---------- utilidades ----------
+  function esc(v){
+    return String(v == null ? "" : v).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+  function dataCurta(iso){
+    if(!iso) return "—";
+    var p = String(iso).slice(0,10).split("-");
+    return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : "—";
+  }
+  function diasAte(iso){
+    if(!iso) return null;
+    var p = String(iso).slice(0,10).split("-");
+    if(p.length !== 3) return null;
+    var d = new Date(+p[0], +p[1]-1, +p[2]);
+    var hoje = new Date(); hoje.setHours(0,0,0,0);
+    return Math.round((d - hoje) / 86400000);
+  }
+  // A temperatura é campo de texto livre — "Quente", "quente" e "QUENTE" são a
+  // mesma coisa e precisam cair na mesma fatia do gráfico.
+  function temperatura(v){
+    var t = String(v || "").trim().toLowerCase();
+    if(!t) return "Sem classificação";
+    if(t.indexOf("quent") === 0) return "Quente";
+    if(t.indexOf("morn") === 0) return "Morno";
+    if(t.indexOf("fri") === 0) return "Frio";
+    return v.trim();
+  }
+  function mentoriasDe(a){
+    return (a.deliveries || []).filter(function(d){ return d.status === "ativo"; }).map(function(d){ return d.label; });
+  }
+  function contaPor(lista, chave){
+    var m = {};
+    lista.forEach(function(x){ var k = chave(x); m[k] = (m[k] || 0) + 1; });
+    return m;
+  }
+  var PALETA = ["#c9974b","#8fb3e0","#8fc79f","#d98a8a","#b294c9","#e3bd76","#7fa8a0","#c98f6b"];
+
+  // Mesma regra da Area CS: numero sem DDI e tratado como Brasil.
+  function waHtml(phone){
+    var digits = String(phone || "").replace(/\D/g, "");
+    if(!digits) return '<span class="sem-wa">sem telefone</span>';
+    if(digits.length <= 11) digits = "55" + digits;
+    return '<a class="wa" href="https://wa.me/' + digits + '" target="_blank" rel="noopener" ' +
+      'title="Chamar ' + esc(phone) + ' no WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>';
+  }
+
+
+  // ================= graficos EG (SVG puro) =================
+  // Rosca animada com centro interativo e legenda; linha suave com brilho.
+  // Sao os dois modelos que o Luiz mandou (React/Recharts/Framer), refeitos
+  // sem biblioteca — o sistema nao tem bundler e nao vai ganhar um por causa
+  // de dois graficos.
+  function donutEG(el, dados, opts){
+    el = typeof el === "string" ? document.getElementById(el) : el;
+    if(!el) return;
+    opts = opts || {};
+    var size = opts.size || 196, sw = opts.stroke || 22;
+    var r = size / 2 - sw / 2, circ = 2 * Math.PI * r;
+    var validos = dados.filter(function(d){ return d.value > 0; });
+    var total = validos.reduce(function(s, d){ return s + d.value; }, 0);
+    if(el.className.indexOf("eg-donut") === -1) el.className += " eg-donut";
+    el.innerHTML = "";
+    if(!total){ el.innerHTML = '<p style="margin:0;font-size:12px;color:#8792a8;">Sem dados neste recorte.</p>'; return; }
+
+    var ns = "http://www.w3.org/2000/svg";
+    var wrap = document.createElement("div"); wrap.className = "eg-donut-svg";
+    wrap.style.width = size + "px"; wrap.style.height = size + "px";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("width", size); svg.setAttribute("height", size); svg.setAttribute("viewBox", "0 0 " + size + " " + size);
+    var base = document.createElementNS(ns, "circle");
+    base.setAttribute("cx", size / 2); base.setAttribute("cy", size / 2); base.setAttribute("r", r);
+    base.setAttribute("fill", "transparent"); base.setAttribute("stroke", "rgba(255,255,255,.06)"); base.setAttribute("stroke-width", sw);
+    svg.appendChild(base);
+
+    // pequena folga entre fatias: com ponta arredondada, encostadas ficam borradas
+    var gap = validos.length > 1 ? Math.min(6, circ * 0.012) : 0;
+    var acumulado = 0, segs = [];
+    validos.forEach(function(d, i){
+      var len = d.value / total * circ;
+      var c = document.createElementNS(ns, "circle");
+      c.setAttribute("cx", size / 2); c.setAttribute("cy", size / 2); c.setAttribute("r", r);
+      c.setAttribute("fill", "transparent"); c.setAttribute("stroke", d.color); c.setAttribute("stroke-width", sw);
+      c.setAttribute("stroke-linecap", "round");
+      c.setAttribute("stroke-dasharray", Math.max(0.5, len - gap) + " " + circ);
+      c.setAttribute("stroke-dashoffset", circ);       // nasce escondida e "desenha" ate o alvo
+      c.setAttribute("data-alvo", -acumulado);
+      c.style.color = d.color; c.classList.add("seg"); c.style.transitionDelay = (i * 70) + "ms";
+      svg.appendChild(c); segs.push({ el: c, d: d });
+      acumulado += len;
+    });
+    wrap.appendChild(svg);
+    var centro = document.createElement("div"); centro.className = "eg-donut-centro"; wrap.appendChild(centro);
+    var leg = document.createElement("div"); leg.className = "eg-donut-legenda";
+    el.appendChild(wrap); el.appendChild(leg);
+
+    var fmt = opts.formata || function(v){ return v; };
+    function mostra(d){
+      var v = d ? d.value : total;
+      centro.innerHTML = '<span class="rot">' + (d ? d.label : (opts.titulo || "Total")) + '</span>' +
+        '<span class="num">' + fmt(v) + '</span>' +
+        (d ? '<span class="pct">' + Math.round(d.value / total * 100) + '%</span>' : '');
+      segs.forEach(function(s){ s.el.classList.toggle("ativo", !!d && s.d === d); });
+      leg.querySelectorAll(".eg-donut-item").forEach(function(it, i){ it.classList.toggle("ativo", !!d && validos[i] === d); });
+    }
+    validos.forEach(function(d, i){
+      var it = document.createElement("div"); it.className = "eg-donut-item";
+      it.innerHTML = '<span class="l"><i class="b" style="background:' + d.color + '"></i><span>' + d.label + '</span></span>' +
+        '<b>' + fmt(d.value) + ' · ' + Math.round(d.value / total * 100) + '%</b>';
+      it.addEventListener("mouseenter", function(){ mostra(d); });
+      it.addEventListener("mouseleave", function(){ mostra(null); });
+      segs[i].el.addEventListener("mouseenter", function(){ mostra(d); });
+      segs[i].el.addEventListener("mouseleave", function(){ mostra(null); });
+      leg.appendChild(it);
+    });
+    mostra(null);
+    // dois frames: o primeiro garante que o estado "escondido" foi pintado,
+    // senao a transicao nao acontece e as fatias aparecem de uma vez
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      segs.forEach(function(s){ s.el.setAttribute("stroke-dashoffset", s.el.getAttribute("data-alvo")); });
+    }); });
+  }
+
+  function linhaEG(el, pontos, opts){
+    el = typeof el === "string" ? document.getElementById(el) : el;
+    if(!el) return;
+    opts = opts || {};
+    var cor = opts.cor || "#e3bd76";
+    var W = 720, H = opts.altura || 240, padL = 46, padR = 18, padT = 24, padB = 34;
+    if(el.className.indexOf("eg-linha") === -1) el.className += " eg-linha";
+    el.innerHTML = "";
+    if(!pontos.length){ el.innerHTML = '<p style="margin:0;font-size:12px;color:#8792a8;">Sem dados.</p>'; return; }
+
+    var ys = pontos.map(function(p){ return p.y; });
+    var maxY = Math.max.apply(null, ys), minY = Math.min.apply(null, ys);
+    if(maxY === minY) maxY = minY + 1;
+    var span = maxY - minY;
+    var topo = maxY + span * 0.18, base = minY === 0 ? 0 : Math.max(0, minY - span * 0.18);
+    var n = pontos.length, iw = W - padL - padR, ih = H - padT - padB;
+    function X(i){ return padL + (n === 1 ? iw / 2 : i * iw / (n - 1)); }
+    function Y(v){ return padT + ih - (v - base) / (topo - base) * ih; }
+    var pts = pontos.map(function(p, i){ return [X(i), Y(p.y)]; });
+
+    // curva monotona (Catmull-Rom -> Bezier): passa por todos os pontos sem
+    // inventar picos entre eles
+    function caminho(P){
+      if(P.length < 2) return "M" + P[0][0] + " " + P[0][1];
+      var d = "M" + P[0][0] + " " + P[0][1];
+      for(var i = 0; i < P.length - 1; i++){
+        var p0 = P[i - 1] || P[i], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2] || p2;
+        d += " C" + (p1[0] + (p2[0] - p0[0]) / 6) + " " + (p1[1] + (p2[1] - p0[1]) / 6) + "," +
+             (p2[0] - (p3[0] - p1[0]) / 6) + " " + (p2[1] - (p3[1] - p1[1]) / 6) + "," + p2[0] + " " + p2[1];
+      }
+      return d;
+    }
+    var linha = caminho(pts);
+    var area = linha + " L" + pts[n - 1][0] + " " + (padT + ih) + " L" + pts[0][0] + " " + (padT + ih) + " Z";
+    var uid = "eg" + Math.random().toString(36).slice(2, 8);
+    var fmtY = opts.formataY || function(v){ return Math.round(v); };
+
+    var grade = "";
+    for(var g = 0; g <= 4; g++){
+      var yy = padT + ih * g / 4, val = topo - (topo - base) * g / 4;
+      grade += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '" stroke="rgba(255,255,255,.09)" stroke-dasharray="4 8"/>' +
+        '<text x="' + (padL - 9) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="10.5" fill="' + cor + '" opacity=".8" font-family="JetBrains Mono, monospace">' + fmtY(val) + '</text>';
+    }
+    var rotulos = "", passo = Math.max(1, Math.ceil(n / 7));
+    pontos.forEach(function(p, i){
+      if(i % passo === 0 || i === n - 1)
+        rotulos += '<text x="' + X(i) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="' + cor + '" opacity=".8" font-family="Montserrat, sans-serif">' + p.x + '</text>';
+    });
+    // destaque: maximo, minimo e o ultimo ponto — os que contam uma historia
+    var iMax = ys.indexOf(Math.max.apply(null, ys)), iMin = ys.indexOf(minY);
+    var marcados = [iMax, iMin, n - 1].filter(function(v, i, a){ return a.indexOf(v) === i; });
+    var pontosSvg = marcados.map(function(i){
+      return '<circle cx="' + pts[i][0] + '" cy="' + pts[i][1] + '" r="6" fill="' + cor + '" stroke="#fff" stroke-width="2" filter="url(#' + uid + 'ds)"/>';
+    }).join("");
+
+    el.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" style="aspect-ratio:' + W + '/' + H + ';">' +
+      '<defs>' +
+        '<linearGradient id="' + uid + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + cor + '" stop-opacity=".16"/><stop offset="100%" stop-color="' + cor + '" stop-opacity="0"/></linearGradient>' +
+        '<pattern id="' + uid + 'p" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,.13)"/></pattern>' +
+        '<filter id="' + uid + 'ds" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="1" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,.8)"/></filter>' +
+        '<filter id="' + uid + 'gl" x="-20%" y="-60%" width="140%" height="220%"><feDropShadow dx="0" dy="7" stdDeviation="14" flood-color="' + cor + '" flood-opacity=".5"/></filter>' +
+      '</defs>' +
+      '<rect x="' + padL + '" y="' + padT + '" width="' + iw + '" height="' + ih + '" fill="url(#' + uid + 'p)"/>' + grade +
+      '<path d="' + area + '" fill="url(#' + uid + 'g)"/>' +
+      '<path d="' + linha + '" fill="none" stroke="' + cor + '" stroke-width="2.5" stroke-linecap="round" filter="url(#' + uid + 'gl)"/>' +
+      pontosSvg + rotulos + '</svg><div class="dica"></div>';
+
+    var dica = el.querySelector(".dica"), svg = el.querySelector("svg"), ns = "http://www.w3.org/2000/svg";
+    var cursor = document.createElementNS(ns, "line");
+    cursor.setAttribute("stroke", cor); cursor.setAttribute("stroke-dasharray", "4 4"); cursor.setAttribute("stroke-opacity", ".6");
+    cursor.setAttribute("y1", padT); cursor.setAttribute("y2", padT + ih); cursor.style.opacity = 0; svg.appendChild(cursor);
+    var ponto = document.createElementNS(ns, "circle");
+    ponto.setAttribute("r", 6); ponto.setAttribute("fill", cor); ponto.setAttribute("stroke", "#fff"); ponto.setAttribute("stroke-width", 2);
+    ponto.style.opacity = 0; svg.appendChild(ponto);
+    svg.addEventListener("mousemove", function(e){
+      var rect = svg.getBoundingClientRect(), x = (e.clientX - rect.left) / rect.width * W, i = 0, best = 1e9;
+      pts.forEach(function(p, k){ var d = Math.abs(p[0] - x); if(d < best){ best = d; i = k; } });
+      cursor.setAttribute("x1", pts[i][0]); cursor.setAttribute("x2", pts[i][0]); cursor.style.opacity = 1;
+      ponto.setAttribute("cx", pts[i][0]); ponto.setAttribute("cy", pts[i][1]); ponto.style.opacity = 1;
+      dica.innerHTML = '<span>' + pontos[i].x + (pontos[i].nota ? ' · ' + pontos[i].nota : '') + '</span><b>' + fmtY(pontos[i].y) + (opts.unidade ? ' ' + opts.unidade : '') + '</b>';
+      dica.style.left = (pts[i][0] / W * rect.width) + "px"; dica.style.top = (pts[i][1] / H * rect.height) + "px"; dica.style.opacity = 1;
+    });
+    svg.addEventListener("mouseleave", function(){ cursor.style.opacity = 0; ponto.style.opacity = 0; dica.style.opacity = 0; });
+  }
+
+  // entradas por mes, nos ultimos N meses, a partir da data de entrada
+  function serieEntradasPorMes(lista, meses){
+    var hoje = new Date(), chaves = [], mapa = {};
+    var M = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+    for(var k = meses - 1; k >= 0; k--){
+      var d = new Date(hoje.getFullYear(), hoje.getMonth() - k, 1);
+      var ch = d.getFullYear() + "-" + (d.getMonth() + 1 < 10 ? "0" : "") + (d.getMonth() + 1);
+      chaves.push(ch); mapa[ch] = 0;
+    }
+    lista.forEach(function(s){
+      var v = s.entry_date ? String(s.entry_date).slice(0, 7) : null;
+      if(v && mapa.hasOwnProperty(v)) mapa[v]++;
+    });
+    return chaves.map(function(ch){ var p = ch.split("-"); return { x: M[parseInt(p[1], 10) - 1] + "/" + p[0].slice(2), y: mapa[ch] }; });
+  }
+  function desenha(id, tipo, labels, valores, opcoes){
+    var el = $(id);
+    if(!el || typeof Chart === "undefined") return;
+    if(graficos[id]) graficos[id].destroy();
+    var base = {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: tipo === "bar" ? { display:false } : { position:"bottom", labels:{ color:"#aab4c9", font:{ size:11, family:"Montserrat" }, boxWidth:10, padding:14 } },
+        tooltip: { backgroundColor:"#0e1a29", borderColor:"rgba(255,255,255,.14)", borderWidth:1, titleColor:"#f3f0e8", bodyColor:"#aab4c9", padding:10 }
+      },
+      scales: tipo === "bar" ? {
+        x:{ grid:{ display:false }, ticks:{ color:"#6d7994", font:{ size:10.5, family:"Montserrat" } } },
+        y:{ grid:{ color:"rgba(255,255,255,.06)" }, ticks:{ color:"#6d7994", font:{ size:10.5, family:"JetBrains Mono" }, precision:0 }, beginAtZero:true }
+      } : {}
+    };
+    graficos[id] = new Chart(el, {
+      type: tipo,
+      data: { labels: labels, datasets: [{
+        data: valores,
+        backgroundColor: tipo === "bar" ? "rgba(201,151,75,.75)" : PALETA,
+        borderColor: tipo === "bar" ? "#c9974b" : "#0e1a29",
+        borderWidth: tipo === "bar" ? 0 : 2,
+        borderRadius: tipo === "bar" ? 5 : 0,
+        hoverOffset: tipo === "bar" ? 0 : 6
+      }]},
+      options: Object.assign(base, opcoes || {})
+    });
+  }
+
+  // Varias series na mesma barra (empilhada). O desenha() so faz uma serie.
+  function desenhaEmpilhado(id, labels, series){
+    var el = $(id);
+    if(!el || typeof Chart === "undefined") return;
+    if(graficos[id]) graficos[id].destroy();
+    graficos[id] = new Chart(el, {
+      type:"bar",
+      data:{ labels: labels, datasets: series.map(function(sr){
+        return { label: sr.nome, data: sr.dados, backgroundColor: sr.cor, borderWidth:0, borderRadius:3, stack:"s" };
+      })},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ position:"bottom", labels:{ color:"#aab4c9", font:{ size:11, family:"Montserrat" }, boxWidth:10, padding:12 } },
+          tooltip:{ backgroundColor:"#0e1a29", borderColor:"rgba(255,255,255,.14)", borderWidth:1, titleColor:"#f3f0e8", bodyColor:"#aab4c9", padding:10 }
+        },
+        scales:{
+          x:{ stacked:true, grid:{ display:false }, ticks:{ color:"#6d7994", font:{ size:10.5, family:"Montserrat" } } },
+          y:{ stacked:true, grid:{ color:"rgba(255,255,255,.06)" }, ticks:{ color:"#6d7994", font:{ size:10.5, family:"JetBrains Mono" }, precision:0 }, beginAtZero:true }
+        }
+      }
+    });
+  }
+
+  var MESES_CURTOS = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  function chaveMes(d){ return d.getFullYear() + "-" + (d.getMonth() + 1 < 10 ? "0" : "") + (d.getMonth() + 1); }
+  function rotuloMes(chave){ var p = chave.split("-"); return MESES_CURTOS[parseInt(p[1], 10) - 1] + "/" + p[0].slice(2); }
+  function mesDe(iso){
+    if(!iso) return null;
+    var p = String(iso).slice(0, 10).split("-");
+    return p.length === 3 ? p[0] + "-" + p[1] : null;
+  }
+
+  // Antes qualquer falha virava "e-mail ou senha incorretos", o que mandava a
+  // pessoa ficar redigitando a senha certa. As causas sao diferentes e o
+  // conserto de cada uma tambem: senha errada se resolve digitando de novo,
+  // e-mail nao confirmado so se resolve no painel do Supabase.
+  function explicaErroLogin(erro){
+    var m = (erro && erro.message ? erro.message : "").toLowerCase();
+    if(m.indexOf("not confirmed") > -1)
+      return "Esse login existe, mas o e-mail nunca foi confirmado. No Supabase: Authentication > Users > abra o usuario > Confirm email.";
+    if(m.indexOf("invalid login credentials") > -1)
+      return "E-mail ou senha incorretos. Se a senha foi criada agora e voce tem certeza dela, pode ser que o usuario tenha sido criado por convite (sem senha) — nesse caso use Reset password no Supabase.";
+    if(m.indexOf("email logins are disabled") > -1 || m.indexOf("provider is not enabled") > -1)
+      return "O login por e-mail esta desligado no projeto. Supabase > Authentication > Sign In / Providers > Email.";
+    if(m.indexOf("banned") > -1 || m.indexOf("user is banned") > -1)
+      return "Esse usuario esta bloqueado no Supabase.";
+    if(m.indexOf("too many") > -1 || m.indexOf("rate limit") > -1)
+      return "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
+    return "Nao consegui entrar: " + (erro && erro.message ? erro.message : "erro desconhecido");
+  }
+
+
+  // ---------- Cloudflare Turnstile (anti-robô no login) ----------
+  // Sem chave configurada o widget nem aparece e o login segue normal.
+  // Com chave: o token vai junto no signIn e o Supabase confere.
+  var TURNSTILE_SITE_KEY = "";
+  var turnstileWidget = null;
+  function turnstileMonta(){
+    if(!TURNSTILE_SITE_KEY || turnstileWidget !== null || typeof turnstile === "undefined") return;
+    var alvo = document.getElementById("turnstileBox"); if(!alvo) return;
+    turnstileWidget = turnstile.render(alvo, { sitekey: TURNSTILE_SITE_KEY, theme: "dark", appearance: "interaction-only", language: "pt-BR" });
+  }
+  function turnstileToken(){
+    if(!TURNSTILE_SITE_KEY) return undefined;
+    if(turnstileWidget === null) turnstileMonta();
+    try { return turnstile.getResponse(turnstileWidget) || undefined; } catch(e){ return undefined; }
+  }
+  function turnstileReset(){ if(turnstileWidget !== null){ try { turnstile.reset(turnstileWidget); } catch(e){} } }
+  window.addEventListener("load", function(){ setTimeout(turnstileMonta, 300); });
+
+  // ---------- login ----------
+  $("formLogin").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    var err = $("loginErro");
+    err.textContent = "";
+    $("btnEntrar").disabled = true;
+    var token = turnstileToken();
+    if(TURNSTILE_SITE_KEY && !token){ $("btnEntrar").disabled = false; err.textContent = "Aguarde um instante a verificação de segurança e tente de novo."; return; }
+    sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginSenha").value, options: { captchaToken: token } }).then(function(r){
+      $("btnEntrar").disabled = false;
+      turnstileReset();
+      if(r.error){ err.textContent = /captcha/i.test(r.error.message) ? "A verificação de segurança falhou. Recarregue a página e tente de novo." : explicaErroLogin(r.error); return; }
+      confereAcesso();
+    });
+  });
+
+  $("btnSair").addEventListener("click", function(){
+    sb.auth.signOut().then(function(){ location.reload(); });
+  });
+
+  function confereAcesso(){
+    sb.auth.getSession().then(function(s){
+      var sessao = s.data && s.data.session;
+      if(!sessao) return;
+      sb.from("staff").select("*").eq("auth_user_id", sessao.user.id).maybeSingle().then(function(r){
+        if(!r.data){
+          $("loginErro").textContent = "Login ok, mas não achei seu cadastro na equipe. Fale com a Thais.";
+          sb.auth.signOut();
+          return;
+        }
+        // A tela é da diretoria; master e admin geral entram também porque
+        // enxergam a base inteira de qualquer forma.
+        var pode = r.data.is_diretoria || r.data.is_master || r.data.is_super_admin;
+        if(!pode){
+          $("loginErro").textContent = "Sua conta não tem acesso à área da diretoria.";
+          sb.auth.signOut();
+          return;
+        }
+        eu = r.data;
+        $("quemSou").textContent = eu.full_name || "Diretoria";
+        $("telaLogin").style.display = "none";
+        $("shell").style.display = "grid";
+        carregaTudo();
+      });
+    });
+  }
+
+  // ---------- navegação ----------
+  document.querySelectorAll(".nav button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".nav button").forEach(function(b){ b.classList.remove("on"); });
+      document.querySelectorAll(".vista").forEach(function(v){ v.classList.remove("on"); });
+      btn.classList.add("on");
+      $("v-" + btn.getAttribute("data-v")).classList.add("on");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Chart.js mede o canvas na criação: dentro de uma aba escondida ele lê
+      // zero e o gráfico nasce sem tamanho. Por isso o redesenho no clique.
+      if(btn.getAttribute("data-v") === "panorama") setTimeout(desenhaPanorama, 30);
+      if(btn.getAttribute("data-v") === "disc") setTimeout(renderDisc, 30);
+      if(btn.getAttribute("data-v") === "evento") setTimeout(renderEvento, 30);
+    });
+  });
+
+  // ---------- carga ----------
+  // O PostgREST devolve no maximo 1000 linhas por consulta e NAO avisa que
+  // cortou. course_progress e live_click_log passam disso com folga (cada
+  // aluno tem varias linhas), entao sem paginar a media de progresso e a
+  // contagem de cliques sairiam calculadas sobre um pedaco da base.
+  function buscarTudo(tabela, colunas, ajusta){
+    var LOTE = 1000, acumulado = [];
+    function passo(de){
+      var q = sb.from(tabela).select(colunas).range(de, de + LOTE - 1);
+      if(ajusta) q = ajusta(q);
+      return q.then(function(r){
+        if(r.error) return { error: r.error, data: null };
+        var lote = r.data || [];
+        acumulado = acumulado.concat(lote);
+        if(lote.length < LOTE) return { error: null, data: acumulado };
+        return passo(de + LOTE);
+      });
+    }
+    return passo(0);
+  }
+
+  var carregando = false, momentoCarga = 0;
+
+  function marcaAtualizacao(){
+    momentoCarga = Date.now();
+    var d = new Date();
+    $("ultimaAtualizacao").textContent = "ATUALIZADO " +
+      String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function carregaTudo(){
+    if(carregando) return;
+    carregando = true;
+    $("btnAtualizar").disabled = true;
+    Promise.all([
+      // `oculto_diretoria` marca quem encerrou a mentoria: some daqui mesmo
+      // que a conta logada também seja master (caso do Dr. Caio).
+      buscarTudo("students", "id,full_name,email,phone,status,temperature,renewal_date,renewal_status,is_lifetime,is_delinquent,entry_date,cs_id,disc_completed_at,especialidade,cidade,uf,cidade_uf,staff:cs_id(full_name),deliveries(label,status,branch_id),disc_results(d_score,i_score,s_score,c_score,primary_profile)",
+        function(q){ return q.or("oculto_diretoria.is.null,oculto_diretoria.eq.false"); }),
+      sb.from("branches").select("id,name").order("name"),
+      // Os sinais de risco moram em tabelas separadas — sem elas a tela vira
+      // uma lista de cadastro, e o que a diretoria precisa e enxergar quem
+      // esta escorregando.
+      buscarTudo("course_progress", "student_id,progress_percentage"),
+      buscarTudo("nps_responses", "student_id,score,created_at"),
+      buscarTudo("live_click_log", "student_id"),
+      buscarTudo("mentoring_sessions", "student_id,status"),
+      buscarTudo("event_rsvps", "student_id,attending,spouse,dietary,special_needs,badge_name,submitted_at,updated_at,manual", function(q){ return q.eq("event_key", EVENTO.key); }),
+      buscarTudo("live_attendance_students", "student_id,lesson_id,occurred_at,duration_min")
+    ]).then(function(res){
+      carregando = false;
+      $("btnAtualizar").disabled = false;
+      if(res[0].error){
+        $("kpis").innerHTML = '<p class="vazio">Não consegui ler a base de mentorados: ' + esc(res[0].error.message) + '</p>';
+        return;
+      }
+      alunos = res[0].data || [];
+      branches = res[1].data || [];
+      presencas = (res[7] && res[7].data) || [];
+      montaPerfil(res[2].data, res[3].data, res[4].data, res[5].data);
+      rsvps = (res[6] && res[6].data) || [];
+      montaFiltros();
+      renderEvento();
+      desenhaPanorama();
+      renderAlunos();
+      carregaCursos();
+      carregaMateriais();
+      carregaAoVivo();
+      carregaRecados();
+      renderDisc();
+      marcaAtualizacao();
+    })["catch"](function(e){
+      // sem isto uma falha de rede deixaria `carregando` travado em true e a
+      // tela pararia de se atualizar pelo resto da sessao, calada
+      carregando = false;
+      $("btnAtualizar").disabled = false;
+      $("ultimaAtualizacao").textContent = "FALHOU — CLIQUE EM ATUALIZAR";
+    });
+  }
+
+  // A tela le as MESMAS tabelas que a Area CS escreve — nao existe copia nem
+  // sincronizacao. O que faltava era so buscar de novo: sem isso a pagina
+  // mostrava o retrato do momento em que foi aberta. Agora ela se refaz
+  // sozinha de minuto em minuto, e tambem quando a aba volta pro foco.
+  $("btnAtualizar").addEventListener("click", function(){ carregaTudo(); });
+
+  setInterval(function(){
+    if(eu && document.visibilityState === "visible") carregaTudo();
+  }, 60000);
+
+  document.addEventListener("visibilitychange", function(){
+    if(eu && document.visibilityState === "visible" && Date.now() - momentoCarga > 30000) carregaTudo();
+  });
+
+  // ---------- sinais por mentorado ----------
+  // Enquanto a base inteira nao tem NENHUM clique de aula ao vivo (o Zoom
+  // ainda nao esta ligado), "nunca entrou ao vivo" nao e um sinal do aluno,
+  // e a ausencia de medicao. Nao pontua e o KPI avisa isso.
+  var medindoAoVivo = false, presencas = [];
+  function montaPerfil(progresso, nps, cliques, sessoes){
+    perfil = {};
+    // presenca real do Zoom vale mais que clique; qualquer um dos dois ja
+    // significa que estamos medindo
+    medindoAoVivo = (cliques || []).length > 0 || presencas.length > 0;
+    function p(id){ return perfil[id] || (perfil[id] = { soma:0, qtd:0, nps:null, cliques:0, sessao:null }); }
+
+    (progresso || []).forEach(function(x){
+      var r = p(x.student_id);
+      r.soma += Math.max(0, Math.min(100, Number(x.progress_percentage) || 0));
+      r.qtd++;
+    });
+    // NPS: vale a nota mais recente, nao a media — o que importa e como ele
+    // esta agora, nao como estava seis meses atras.
+    (nps || []).filter(function(x){ return x.student_id; })
+      .sort(function(a,b){ return String(a.created_at).localeCompare(String(b.created_at)); })
+      .forEach(function(x){ p(x.student_id).nps = Number(x.score); });
+    (cliques || []).forEach(function(x){ p(x.student_id).cliques++; });
+    presencas.forEach(function(x){ if(x.student_id){ var r = p(x.student_id); r.presencas = (r.presencas || 0) + 1; r.cliques++; } });
+    (sessoes || []).forEach(function(x){
+      var r = p(x.student_id);
+      if(x.status === "realizada" || !r.sessao) r.sessao = x.status;
+    });
+
+    Object.keys(perfil).forEach(function(id){
+      var r = perfil[id];
+      r.media = r.qtd ? Math.round(r.soma / r.qtd) : null;
+    });
+  }
+
+  // Nota de risco: soma de sinais objetivos, cada um com o seu motivo em texto.
+  // Nada de media ponderada obscura — a diretoria precisa ver POR QUE o nome
+  // apareceu, senao a lista vira palpite.
+  function avaliaRisco(a){
+    var r = perfil[a.id] || {};
+    var pontos = 0, motivos = [];
+
+    var d = (a.is_lifetime || !a.renewal_date) ? null : diasAte(a.renewal_date);
+    var renov = String(a.renewal_status || "").toLowerCase();
+    var jaResolvido = renov.indexOf("renovado") > -1;
+
+    if(d !== null && d < 0 && !jaResolvido){ pontos += 3; motivos.push({ t: Math.abs(d) + "d vencido", g:true }); }
+    else if(d !== null && d <= 60 && !jaResolvido){ pontos += 2; motivos.push({ t:"vence em " + d + "d", g:false }); }
+
+    if(a.is_delinquent){ pontos += 3; motivos.push({ t:"inadimplente", g:true }); }
+    if(renov.indexOf("não renov") > -1 || renov.indexOf("nao renov") > -1){ pontos += 3; motivos.push({ t:"disse que não renova", g:true }); }
+
+    if(r.nps !== null && r.nps !== undefined){
+      if(r.nps <= 6){ pontos += 3; motivos.push({ t:"NPS " + r.nps, g:true }); }
+      else if(r.nps <= 8){ pontos += 1; motivos.push({ t:"NPS " + r.nps, g:false }); }
+    }
+
+    if(temperatura(a.temperature) === "Frio"){ pontos += 2; motivos.push({ t:"CS marcou frio", g:false }); }
+
+    if(r.media === null || r.media === undefined){ pontos += 1; motivos.push({ t:"sem progresso registrado", g:false }); }
+    else if(r.media < 15){ pontos += 2; motivos.push({ t:"assistiu " + r.media + "%", g:true }); }
+    else if(r.media < 35){ pontos += 1; motivos.push({ t:"assistiu " + r.media + "%", g:false }); }
+
+    if(medindoAoVivo && !r.cliques && !r.presencas){ pontos += 1; motivos.push({ t:"nunca entrou ao vivo", g:false }); }
+    if(r.sessao !== "realizada" && a.status !== "inativo"){ pontos += 1; motivos.push({ t:"1x1 não realizado", g:false }); }
+
+    return { pontos: pontos, motivos: motivos, media: r.media, nps: r.nps };
+  }
+  function faixa(p){ return p >= 6 ? "alto" : (p >= 3 ? "medio" : "baixo"); }
+
+  // ---------- visão geral ----------
+  function barrasEG(elId, itens, total){
+    var el = $(elId);
+    if(!el) return;
+    if(!itens.length){ el.innerHTML = '<p class="barra-vazia">Ainda sem dados preenchidos.</p>'; return; }
+    var maior = itens[0].valor || 1;
+    el.innerHTML = '<div class="barras">' + itens.map(function(i){
+      var pct = total ? Math.round(i.valor / total * 100) : 0;
+      return '<div class="barra-linha" title="' + esc(i.rotulo) + ': ' + i.valor + '">' +
+        '<span class="rotulo">' + esc(i.rotulo) + '</span>' +
+        '<span class="trilho"><i style="width:' + Math.round(i.valor / maior * 100) + '%;"></i></span>' +
+        '<span class="valor">' + i.valor + ' · ' + pct + '%</span>' +
+      '</div>';
+    }).join("") + '</div>';
+  }
+  function contaCampo(lista, campo){
+    var mapa = {};
+    lista.forEach(function(a){ var v = (a[campo] || "").trim(); if(v) mapa[v] = (mapa[v] || 0) + 1; });
+    return Object.keys(mapa).map(function(k){ return { rotulo:k, valor:mapa[k] }; })
+      .sort(function(a, b){ return b.valor - a.valor; });
+  }
+
+  function desenhaPanorama(){
+    if(!alunos.length){ return; }
+    var ativos = alunos.filter(function(a){ return a.status === "ativo" || a.status === "onboarding" || a.status === "em_reonboarding"; });
+    var vencendo = alunos.filter(function(a){
+      if(a.is_lifetime || !a.renewal_date) return false;
+      var d = diasAte(a.renewal_date);
+      return d !== null && d >= 0 && d <= 30;
+    });
+    var vencidos = alunos.filter(function(a){
+      if(a.is_lifetime || !a.renewal_date) return false;
+      var d = diasAte(a.renewal_date);
+      return d !== null && d < 0;
+    });
+    var quentes = alunos.filter(function(a){ return temperatura(a.temperature) === "Quente"; });
+
+    $("kpis").innerHTML = [
+      { rot:"Mentorados na base", num: alunos.length, sub: ativos.length + " em atividade" },
+      { rot:"Vencem em 30 dias", num: vencendo.length, sub:"contratos a renovar", cls:"alerta" },
+      { rot:"Já vencidos", num: vencidos.length, sub:"sem renovação registrada", cls: vencidos.length ? "risco" : "" },
+      { rot:"Marcados como quentes", num: quentes.length, sub:"leitura da CS", cls:"ok" }
+    ].map(function(k){
+      return '<div class="kpi ' + (k.cls || "") + '"><div class="rot">' + k.rot + '</div>' +
+        '<div class="num">' + k.num + '</div><div class="sub">' + k.sub + '</div></div>';
+    }).join("");
+
+    var emRisco = alunos.filter(function(a){ return avaliaRisco(a).pontos >= 6; });
+    var comNps = alunos.map(function(a){ return (perfil[a.id] || {}).nps; }).filter(function(n){ return n !== null && n !== undefined; });
+    var mediaNps = comNps.length ? (comNps.reduce(function(s,n){ return s + n; }, 0) / comNps.length) : null;
+    var semAoVivo = alunos.filter(function(a){ return !(perfil[a.id] || {}).cliques; });
+    var sem1a1 = alunos.filter(function(a){ return (perfil[a.id] || {}).sessao !== "realizada" && a.status !== "inativo"; });
+
+    $("kpisRenovacao").innerHTML = [
+      { rot:"Risco alto de não renovar", num: emRisco.length, sub:"6+ pontos de sinal", cls: emRisco.length ? "risco" : "ok" },
+      { rot:"NPS médio", num: mediaNps === null ? "—" : mediaNps.toFixed(1), sub: comNps.length + " respostas", cls: mediaNps !== null && mediaNps >= 9 ? "ok" : "alerta" },
+      medindoAoVivo
+        ? { rot:"Nunca entrou numa aula ao vivo", num: semAoVivo.length, sub:"de " + alunos.length + " mentorados", cls:"alerta" }
+        : { rot:"Aulas ao vivo", num:"—", sub:"sem medição ainda (Zoom não ligado)", cls:"" },
+      { rot:"Sem 1x1 realizado", num: sem1a1.length, sub:"conversa com os fundadores", cls:"alerta" }
+    ].map(function(k){
+      return '<div class="kpi ' + (k.cls || "") + '"><div class="rot">' + k.rot + '</div>' +
+        '<div class="num">' + k.num + '</div><div class="sub">' + k.sub + '</div></div>';
+    }).join("");
+
+    // Quem saiu (inativo/cancelado) não é carteira: fica só no histórico.
+    var carteira = alunos.filter(function(a){ return a.status !== "inativo" && a.status !== "cancelado"; });
+    var CORES_STATUS = { ativo:"#8fc79f", "em tratativa":"#e3bd76", onboarding:"#e3bd76", em_reonboarding:"#c9974b", trancado:"#8fb3e0" };
+    var porStatus = contaPor(carteira, function(a){
+      return a.status === "ativo" && a.renewal_status === "Resolvendo" ? "em tratativa" : (a.status || "sem situação");
+    });
+    donutEG("dStatus", Object.keys(porStatus).map(function(k){
+      return { label: k.replace("_", " "), value: porStatus[k], color: CORES_STATUS[k] || "#b294c9" };
+    }).sort(function(x, y){ return y.value - x.value; }), { titulo:"Na carteira" });
+
+    var CORES_TEMP = { Quente:"#d98a8a", Morno:"#e3bd76", Frio:"#8fb3e0" };
+    var porTemp = contaPor(carteira, function(a){ return temperatura(a.temperature); });
+    donutEG("dTemp", Object.keys(porTemp).map(function(k){
+      return { label: k, value: porTemp[k], color: CORES_TEMP[k] || "#4a5670" };
+    }).sort(function(x, y){ return y.value - x.value; }), { titulo:"Na carteira" });
+
+    var espec = contaCampo(carteira, "especialidade"), estado = contaCampo(carteira, "uf");
+    barrasEG("dEspecialidade", espec.slice(0, 12), carteira.length);
+    barrasEG("dEstado", estado.slice(0, 12), carteira.length);
+    if($("notaPerfil")) $("notaPerfil").textContent =
+      espec.length + " especialidades · " + estado.length + " estados";
+
+    // crescimento: a linha com brilho
+    var serie = serieEntradasPorMes(alunos, 12);
+    var totalAno = serie.reduce(function(acc, p){ return acc + p.y; }, 0);
+    var ultMes = serie[11] ? serie[11].y : 0, antMes = serie[10] ? serie[10].y : 0;
+    var varPct = antMes ? Math.round((ultMes - antMes) / antMes * 100) : null;
+    var melhor = serie.slice().sort(function(x, y){ return y.y - x.y; })[0];
+    $("heroCresc").innerHTML =
+      '<span class="rot">Mentorados ativos hoje</span><span class="num">' + ativos.length + '</span>' +
+      (varPct === null ? '' : '<span class="var' + (varPct < 0 ? " neg" : "") + '">' + (varPct > 0 ? "+" : "") + varPct + '%<small>entradas este mês vs. anterior</small></span>');
+    $("statsCresc").innerHTML =
+      '<span>Entradas em 12 meses: <b class="ouro">' + totalAno + '</b></span>' +
+      '<span>Este mês: <b>' + ultMes + '</b></span>' +
+      '<span>Melhor mês: <b class="verde">' + (melhor ? melhor.x + " · " + melhor.y : "—") + '</b></span>';
+    linhaEG("gCresc", serie, { cor:"#e3bd76", altura:250, unidade:"entrada(s)" });
+
+    var porMentoria = {};
+    ativos.forEach(function(a){
+      var ms = mentoriasDe(a);
+      if(!ms.length) ms = ["Sem mentoria"];
+      ms.forEach(function(m){ porMentoria[m] = (porMentoria[m] || 0) + 1; });
+    });
+    var ordenadas = Object.keys(porMentoria).sort(function(x,y){ return porMentoria[y] - porMentoria[x]; });
+    desenha("gMentoria", "bar", ordenadas, ordenadas.map(function(m){ return porMentoria[m]; }));
+
+    var semTemp = alunos.filter(function(a){ return !String(a.temperature || "").trim(); }).length;
+    $("notaBase").textContent = semTemp
+      ? semTemp + " sem temperatura preenchida"
+      : "temperatura preenchida em toda a base";
+
+    // ---- movimento da base ----
+    // Entradas: ultimos 12 meses, contando pela data de entrada do aluno.
+    var hoje = new Date();
+    var mesesPassados = [], mesesFuturos = [];
+    for(var k = 11; k >= 0; k--) mesesPassados.push(chaveMes(new Date(hoje.getFullYear(), hoje.getMonth() - k, 1)));
+    for(var f = 0; f < 6; f++) mesesFuturos.push(chaveMes(new Date(hoje.getFullYear(), hoje.getMonth() + f, 1)));
+
+    var entradasPorMes = {}; mesesPassados.forEach(function(m){ entradasPorMes[m] = 0; });
+    alunos.forEach(function(a){ var m = mesDe(a.entry_date); if(m && entradasPorMes.hasOwnProperty(m)) entradasPorMes[m]++; });
+    desenha("gEntradas", "bar", mesesPassados.map(rotuloMes), mesesPassados.map(function(m){ return entradasPorMes[m]; }));
+
+    var vencPorMes = {}; mesesFuturos.forEach(function(m){ vencPorMes[m] = 0; });
+    alunos.forEach(function(a){
+      if(a.is_lifetime || a.status === "inativo" || a.status === "cancelado") return;
+      var m = mesDe(a.renewal_date); if(m && vencPorMes.hasOwnProperty(m)) vencPorMes[m]++;
+    });
+    desenha("gVencimentos", "bar", mesesFuturos.map(rotuloMes), mesesFuturos.map(function(m){ return vencPorMes[m]; }));
+
+    var porCs = contaPor(ativos, function(a){ return (a.staff && a.staff.full_name) ? a.staff.full_name.split(" ")[0] : "Sem CS"; });
+    var csOrd = Object.keys(porCs).sort(function(x, y){ return porCs[y] - porCs[x]; });
+    desenha("gPorCs", "bar", csOrd, csOrd.map(function(c){ return porCs[c]; }));
+
+    // temperatura por mentoria: uma barra por braco, empilhada em quente/morno/frio
+    var mentoriasTodas = {};
+    ativos.forEach(function(a){ mentoriasDe(a).forEach(function(m){ mentoriasTodas[m] = true; }); });
+    var listaM = Object.keys(mentoriasTodas).sort();
+    function contaTemp(m, t){ return ativos.filter(function(a){ return mentoriasDe(a).indexOf(m) > -1 && temperatura(a.temperature) === t; }).length; }
+    desenhaEmpilhado("gTempMentoria", listaM, [
+      { nome:"Quente", cor:"#d98a8a", dados: listaM.map(function(m){ return contaTemp(m, "Quente"); }) },
+      { nome:"Morno",  cor:"#e3bd76", dados: listaM.map(function(m){ return contaTemp(m, "Morno"); }) },
+      { nome:"Frio",   cor:"#8fb3e0", dados: listaM.map(function(m){ return contaTemp(m, "Frio"); }) }
+    ]);
+    var totalEntradas12 = mesesPassados.reduce(function(sum, m){ return sum + entradasPorMes[m]; }, 0);
+    var totalVenc6 = mesesFuturos.reduce(function(sum, m){ return sum + vencPorMes[m]; }, 0);
+    $("notaMovimento").textContent = totalEntradas12 + " entradas em 12 meses · " + totalVenc6 + " vencimentos nos próximos 6";
+
+    desenhaVencimentos();
+  }
+
+  // Vencimentos com filtro: vencidos, janelas de dias, todos, sem data.
+  // So mentorados ativos (onboarding/reonboarding contam): quem ja saiu nao
+  // tem contrato pra vencer. Lista completa, sem corte de 25.
+  var vencFiltro = "30";
+  function desenhaVencimentos(){
+    var ativos = alunos.filter(function(a){ return a.status === "ativo" || a.status === "onboarding" || a.status === "em_reonboarding"; });
+    var lista = ativos.filter(function(a){
+      var semData = a.is_lifetime || !a.renewal_date;
+      if(vencFiltro === "semdata") return semData;
+      if(semData) return false;
+      var d = diasAte(a.renewal_date);
+      if(d === null) return false;
+      if(vencFiltro === "vencidos") return d < 0;
+      if(vencFiltro === "todos") return true;
+      var lim = parseInt(vencFiltro, 10);
+      return d >= 0 && d <= lim;
+    }).sort(function(x,y){
+      var dx = x.renewal_date ? diasAte(x.renewal_date) : 1e9, dy = y.renewal_date ? diasAte(y.renewal_date) : 1e9;
+      return (dx - dy) || String(x.full_name).localeCompare(String(y.full_name));
+    });
+
+    var vencidos = ativos.filter(function(a){ return !a.is_lifetime && a.renewal_date && diasAte(a.renewal_date) < 0; }).length;
+    var em30 = ativos.filter(function(a){ var d = (!a.is_lifetime && a.renewal_date) ? diasAte(a.renewal_date) : null; return d !== null && d >= 0 && d <= 30; }).length;
+    $("notaVencimentos").textContent = lista.length + " na lista · " + vencidos + " vencidos · " + em30 + " vencem em 30 dias";
+
+    $("tabVencimentos").innerHTML = lista.length ? lista.map(function(a){
+      var semData = a.is_lifetime || !a.renewal_date;
+      var d = semData ? null : diasAte(a.renewal_date);
+      var sel = semData
+        ? '<span class="selo">' + (a.is_lifetime ? "vitalício" : "sem data de vencimento") + '</span>'
+        : (d < 0 ? '<span class="selo risco">' + Math.abs(d) + 'd vencido</span>'
+          : '<span class="selo ' + (d <= 30 ? "alerta" : "") + '">vence em ' + d + 'd</span>');
+      var renov = a.renewal_status ? '<span class="secundario">' + esc(a.renewal_status) + '</span>' : '';
+      return '<tr><td><span class="principal">' + esc(a.full_name) + waHtml(a.phone) + '</span><span class="secundario">' + esc(a.email || "") + '</span></td>' +
+        '<td>' + esc(mentoriasDe(a).join(", ") || "—") + '</td>' +
+        '<td>' + esc((a.staff && a.staff.full_name) || "—") + '</td>' +
+        '<td class="num-col">' + (a.entry_date ? dataCurta(a.entry_date) : "—") + '</td>' +
+        '<td class="num-col">' + (semData ? "—" : dataCurta(a.renewal_date)) + '</td>' +
+        '<td>' + sel + renov + '</td></tr>';
+    }).join("") : '<tr><td colspan="6" class="vazio">Ninguém nesse recorte.</td></tr>';
+  }
+  document.querySelectorAll("#chipsVenc .chip").forEach(function(ch){
+    ch.addEventListener("click", function(){
+      document.querySelectorAll("#chipsVenc .chip").forEach(function(c){ c.classList.remove("on"); });
+      ch.classList.add("on");
+      vencFiltro = ch.getAttribute("data-venc");
+      desenhaVencimentos();
+    });
+  });
+
+  // ---------- mentorados ----------
+  // Roda a cada atualizacao automatica, entao precisa repovoar em vez de
+  // acrescentar — senao os seletores duplicam as opcoes a cada minuto.
+  function repovoa(id, itens, rotulo, valor){
+    var sel = $(id);
+    if(!sel) return;
+    var atual = sel.value;
+    sel.innerHTML = '<option value="">' + rotulo + '</option>' +
+      itens.map(function(x){ return '<option value="' + esc(valor(x)) + '">' + esc(x.name || x) + '</option>'; }).join("");
+    sel.value = atual;
+  }
+
+  function montaFiltros(){
+    var css = {};
+    alunos.forEach(function(a){ if(a.staff && a.staff.full_name) css[a.staff.full_name] = true; });
+    var nomesCs = Object.keys(css).sort();
+
+    repovoa("filtroMentoria", branches, "Todas", function(b){ return b.name; });
+    repovoa("matMentoria", branches, "Todas as mentorias", function(b){ return b.id; });
+    repovoa("filtroCs", nomesCs, "Todas", function(n){ return n; });
+    repovoa("discMentoria", branches, "Todas", function(b){ return b.name; });
+    repovoa("discCs", nomesCs, "Todas", function(n){ return n; });
+
+    ["buscaAluno","filtroMentoria","filtroCs"].forEach(function(id){
+      $(id).addEventListener("input", renderAlunos);
+      $(id).addEventListener("change", renderAlunos);
+    });
+    $("chipSoRisco").addEventListener("click", function(){
+      soRisco = !soRisco;
+      $("chipSoRisco").classList.toggle("on", soRisco);
+      renderAlunos();
+    });
+  }
+
+  function renderAlunos(){
+    var busca = ($("buscaAluno").value || "").trim().toLowerCase();
+    var fm = $("filtroMentoria").value, fc = $("filtroCs").value;
+
+    var lista = alunos.map(function(a){
+      return { aluno: a, risco: avaliaRisco(a) };
+    }).filter(function(x){
+      var a = x.aluno;
+      if(a.status === "inativo" || a.status === "cancelado") return false;
+      if(soRisco && x.risco.pontos < 3) return false;
+      if(fm && mentoriasDe(a).indexOf(fm) === -1) return false;
+      if(fc && ((a.staff && a.staff.full_name) || "") !== fc) return false;
+      if(busca){
+        var alvo = (a.full_name || "").toLowerCase() + " " + (a.email || "").toLowerCase();
+        if(alvo.indexOf(busca) === -1) return false;
+      }
+      return true;
+    }).sort(function(x,y){
+      return y.risco.pontos - x.risco.pontos || (x.aluno.full_name || "").localeCompare(y.aluno.full_name || "");
+    });
+
+    var altos = lista.filter(function(x){ return x.risco.pontos >= 6; }).length;
+    $("kpisAtencao").innerHTML = [
+      { rot:"Na lista agora", num: lista.length, sub: soRisco ? "com algum sinal de risco" : "mentorados ativos" },
+      { rot:"Risco alto", num: altos, sub:"vale marcar um 1x1", cls: altos ? "risco" : "ok" }
+    ].map(function(k){
+      return '<div class="kpi ' + (k.cls || "") + '"><div class="rot">' + k.rot + '</div>' +
+        '<div class="num">' + k.num + '</div><div class="sub">' + k.sub + '</div></div>';
+    }).join("");
+
+    $("contaAlunos").textContent = lista.length + " mentorado(s)";
+    $("tabAlunos").innerHTML = lista.length ? lista.slice(0, 200).map(function(x){
+      var a = x.aluno, r = x.risco, f = faixa(r.pontos);
+      var d = a.is_lifetime ? null : diasAte(a.renewal_date);
+      var motivos = r.motivos.length
+        ? '<div class="motivos">' + r.motivos.map(function(m){
+            return '<span class="motivo ' + (m.g ? "grave" : "medio") + '">' + esc(m.t) + '</span>';
+          }).join("") + '</div>'
+        : '<span class="secundario">nenhum sinal — está em dia</span>';
+      return '<tr>' +
+        '<td><span class="risco-nota ' + f + '">' + r.pontos + '</span>' +
+          '<span class="risco-faixa">' + (f === "alto" ? "alto" : f === "medio" ? "médio" : "baixo") + '</span></td>' +
+        '<td><span class="principal">' + esc(a.full_name) + waHtml(a.phone) + '</span><span class="secundario">' + esc(a.email || "") + '</span></td>' +
+        '<td>' + motivos + '</td>' +
+        '<td>' + esc(mentoriasDe(a).join(", ") || "—") + '</td>' +
+        '<td>' + esc((a.staff && a.staff.full_name) || "—") + '</td>' +
+        '<td class="num-col">' + (a.is_lifetime ? "vitalício" : (d !== null && d < 0 ? Math.abs(d) + "d vencido" : dataCurta(a.renewal_date))) + '</td></tr>';
+    }).join("") : '<tr><td colspan="6" class="vazio">Ninguém com sinal de risco nesses filtros. Desmarque o botão acima pra ver a base ativa inteira.</td></tr>';
+  }
+
+  // ---------- aulas gravadas ----------
+  function carregaCursos(){
+    sb.from("course_progress").select("progress_percentage,course:course_id(name)").then(function(r){
+      if(r.error){ $("tabCursos").innerHTML = '<tr><td colspan="3" class="vazio">Erro: ' + esc(r.error.message) + '</td></tr>'; return; }
+      var linhas = (r.data || []).filter(function(x){ return x.course; });
+      var porCurso = {};
+      linhas.forEach(function(x){
+        var n = x.course.name;
+        if(!porCurso[n]) porCurso[n] = { soma:0, qtd:0 };
+        porCurso[n].soma += Math.max(0, Math.min(100, Number(x.progress_percentage) || 0));
+        porCurso[n].qtd++;
+      });
+      var nomes = Object.keys(porCurso).sort(function(a,b){
+        return (porCurso[b].soma / porCurso[b].qtd) - (porCurso[a].soma / porCurso[a].qtd);
+      });
+
+      if(!nomes.length){
+        $("tabCursos").innerHTML = '<tr><td colspan="3" class="vazio">Sem progresso registrado ainda. Ele chega pela sincronização com a Cademí.</td></tr>';
+        $("kpisCursos").innerHTML = "";
+        return;
+      }
+
+      var mediaGeral = Math.round(nomes.reduce(function(s,n){ return s + porCurso[n].soma / porCurso[n].qtd; }, 0) / nomes.length);
+      var melhor = nomes[0], pior = nomes[nomes.length - 1];
+      $("kpisCursos").innerHTML = [
+        { rot:"Cursos com progresso", num: nomes.length, sub:"registrados na Cademí" },
+        { rot:"Conclusão média geral", num: mediaGeral + "<small>%</small>", sub:"média das médias por curso" },
+        { rot:"Melhor desempenho", num: Math.round(porCurso[melhor].soma / porCurso[melhor].qtd) + "<small>%</small>", sub: melhor, cls:"ok" },
+        { rot:"Maior abandono", num: Math.round(porCurso[pior].soma / porCurso[pior].qtd) + "<small>%</small>", sub: pior, cls:"risco" }
+      ].map(function(k){
+        return '<div class="kpi ' + (k.cls || "") + '"><div class="rot">' + k.rot + '</div>' +
+          '<div class="num">' + k.num + '</div><div class="sub">' + esc(k.sub) + '</div></div>';
+      }).join("");
+
+      $("notaCursos").textContent = linhas.length + " registros de progresso";
+      $("tabCursos").innerHTML = nomes.map(function(n){
+        var m = Math.round(porCurso[n].soma / porCurso[n].qtd);
+        return '<tr><td><span class="principal">' + esc(n) + '</span></td>' +
+          '<td class="num-col">' + porCurso[n].qtd + '</td>' +
+          '<td style="min-width:160px;"><span class="num-col">' + m + '%</span>' +
+          '<div class="barra"><i style="width:' + m + '%;"></i></div></td></tr>';
+      }).join("");
+    });
+  }
+
+  // ---------- materiais ----------
+  function carregaMateriais(){
+    sb.from("documents").select("id,code,title,category,doc_type,version,revision_date,responsible_name,status,file_url,branch_id,created_at")
+      .order("created_at", { ascending: false }).then(function(r){
+        if(r.error){ $("tabMateriais").innerHTML = '<tr><td colspan="7" class="vazio">Erro: ' + esc(r.error.message) + '</td></tr>'; return; }
+        var docs = r.data || [];
+        $("notaMateriais").textContent = docs.length + " documento(s)";
+        $("tabMateriais").innerHTML = docs.length ? docs.map(function(d){
+          var b = branches.find(function(x){ return x.id === d.branch_id; });
+          var vig = (d.status || "vigente") === "vigente";
+          return '<tr><td><span class="principal">' +
+              (d.file_url ? '<a href="' + esc(d.file_url) + '" target="_blank" rel="noopener">' + esc(d.title) + '</a>' : esc(d.title)) +
+            '</span>' + (d.code ? '<span class="secundario cod">' + esc(d.code) + '</span>' : '') + '</td>' +
+            '<td class="num-col">' + esc(d.version || "—") + '</td>' +
+            '<td class="num-col">' + dataCurta(d.revision_date) + '</td>' +
+            '<td>' + esc(d.responsible_name || "—") + '</td>' +
+            '<td>' + esc(b ? b.name : "Todas") + '</td>' +
+            '<td><span class="selo ' + (vig ? "ok" : "") + '">' + (vig ? "Vigente" : "Arquivado") + '</span></td>' +
+            '<td><button class="btn btn-ghost btn-mini mat-apagar" data-id="' + d.id + '" ' +
+              'data-url="' + esc(d.file_url || "") + '" data-titulo="' + esc(d.title) + '">Excluir</button></td></tr>';
+        }).join("") : '<tr><td colspan="7" class="vazio">Nenhum material publicado ainda.</td></tr>';
+        ligaExclusaoMaterial();
+      });
+  }
+
+  // Apaga o registro E o arquivo. Deixar o arquivo orfao no bucket faria a
+  // biblioteca "esvaziar" na tela enquanto o storage so cresce.
+  function ligaExclusaoMaterial(){
+    document.querySelectorAll(".mat-apagar").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var titulo = btn.getAttribute("data-titulo");
+        if(!confirm('Excluir "' + titulo + '"? Os mentorados deixam de ver esse material.')) return;
+        btn.disabled = true;
+
+        var url = btn.getAttribute("data-url") || "";
+        var corte = url.indexOf("/materiais/");
+        var caminho = corte > -1 ? decodeURIComponent(url.slice(corte + "/materiais/".length)) : null;
+
+        sb.from("documents").delete().eq("id", btn.getAttribute("data-id")).then(function(r){
+          if(r.error){ btn.disabled = false; alert("Erro ao excluir: " + r.error.message); return; }
+          if(caminho){
+            sb.storage.from("materiais").remove([caminho]).then(function(){ carregaMateriais(); });
+          } else {
+            carregaMateriais();
+          }
+        });
+      });
+    });
+  }
+
+  $("btnPublicarMat").addEventListener("click", function(){
+    var err = $("matErro");
+    err.style.color = "";
+    var titulo = $("matTitulo").value.trim();
+    var arquivo = $("matArquivo").files && $("matArquivo").files[0];
+    if(!titulo){ err.textContent = "Escreva o título do material."; return; }
+    if(!arquivo){ err.textContent = "Escolha o arquivo."; return; }
+
+    $("btnPublicarMat").disabled = true;
+    err.textContent = "Subindo arquivo...";
+    var caminho = Date.now() + "-" + arquivo.name.replace(/[^A-Za-z0-9._-]/g, "_");
+
+    sb.storage.from("materiais").upload(caminho, arquivo).then(function(up){
+      if(up.error){ $("btnPublicarMat").disabled = false; err.textContent = "Erro ao subir: " + up.error.message; return; }
+      var url = sb.storage.from("materiais").getPublicUrl(caminho).data.publicUrl;
+      sb.from("documents").insert({
+        title: titulo,
+        code: $("matCodigo").value.trim() || null,
+        version: $("matVersao").value.trim() || null,
+        category: $("matCategoria").value.trim() || null,
+        doc_type: $("matTipo").value.trim() || null,
+        responsible_name: $("matResponsavel").value.trim() || (eu && eu.full_name) || null,
+        branch_id: $("matMentoria").value || null,
+        revision_date: new Date().toISOString().slice(0, 10),
+        status: "vigente",
+        file_url: url,
+        is_new: true
+      }).then(function(ins){
+        $("btnPublicarMat").disabled = false;
+        if(ins.error){ err.textContent = "Arquivo subiu, mas não gravou o registro: " + ins.error.message; return; }
+        ["matTitulo","matCodigo","matVersao","matCategoria","matTipo","matResponsavel"].forEach(function(id){ $(id).value = ""; });
+        $("matArquivo").value = "";
+        err.style.color = "var(--green)";
+        err.textContent = "Material publicado. Já aparece para os mentorados.";
+        carregaMateriais();
+      });
+    });
+  });
+
+  // ---------- evento ----------
+  // Mesma tabela que a Area CS alimenta (event_rsvps, via forms-webhook).
+  // A diretoria so le. Manual da CS vale mais que o formulario.
+  var EVENTO = { key:"mentalidade-2026-10-17", mentoria:"Mentoria Mãe", data:"2026-10-17" };
+  var rsvps = [], evFiltro = "confirmado";
+
+  function evBase(){
+    return alunos.filter(function(a){
+      if(a.status === "inativo" || a.status === "cancelado") return false;
+      return (a.deliveries || []).some(function(d){ return d.status === "ativo" && d.label === EVENTO.mentoria; });
+    });
+  }
+  function evRespostaDe(id){
+    var minhas = rsvps.filter(function(r){ return r.student_id === id; })
+      .sort(function(a, b){ return String(b.submitted_at || "").localeCompare(String(a.submitted_at || "")); });
+    if(!minhas.length) return null;
+    return minhas.filter(function(r){ return r.manual; })[0] || minhas[0];
+  }
+  function evSit(r){ return (!r || r.attending === null || r.attending === undefined) ? "sem_resposta" : (r.attending ? "confirmado" : "nao_vai"); }
+  function evDataHora(iso){
+    if(!iso) return "—";
+    var d = new Date(iso); if(isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) + " " + d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+  }
+
+  function renderEvento(){
+    if(!$("evKpis")) return;
+    var base = evBase();
+    var pares = base.map(function(a){ var r = evRespostaDe(a.id); return { a:a, r:r, sit:evSit(r) }; });
+    var conf = pares.filter(function(x){ return x.sit === "confirmado"; });
+    var nao = pares.filter(function(x){ return x.sit === "nao_vai"; });
+    var sem = pares.filter(function(x){ return x.sit === "sem_resposta"; });
+    var conj = conf.filter(function(x){ return x.r.spouse; });
+    var rest = conf.filter(function(x){ return x.r.dietary; });
+    var nec = conf.filter(function(x){ return x.r.special_needs; });
+    var pct = base.length ? Math.round((conf.length + nao.length) / base.length * 100) : 0;
+
+    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    var dias = Math.round((new Date(EVENTO.data + "T00:00:00").getTime() - hoje.getTime()) / 86400000);
+    $("evDias").textContent = dias >= 0 ? dias : "—";
+
+    $("evKpis").innerHTML = [
+      { rot:"Mentorados da Mãe", num: base.length, sub:"base convidada" },
+      { rot:"Confirmaram", num: conf.length, sub: base.length ? Math.round(conf.length / base.length * 100) + "% da base" : "", cls:"ok" },
+      { rot:"Não vão", num: nao.length, sub:"responderam que não", cls: nao.length ? "risco" : "" },
+      { rot:"Ainda não responderam", num: sem.length, sub:"lista da CS pra cobrar", cls: sem.length ? "alerta" : "ok" },
+      { rot:"Pessoas no evento", num: conf.length + conj.length, sub: conf.length + " mentorados + " + conj.length + " cônjuge(s)" },
+      { rot:"Restrições alimentares", num: rest.length, sub:"entre os confirmados" }
+    ].map(function(k){
+      return '<div class="kpi ' + (k.cls || "") + '"><div class="rot">' + k.rot + '</div><div class="num">' + k.num + '</div><div class="sub">' + (k.sub || "") + '</div></div>';
+    }).join("");
+
+    donutEG("evDonut", [
+      { label:"Confirmaram", value: conf.length, color:"#8fc79f" },
+      { label:"Não vão", value: nao.length, color:"#d98a8a" },
+      { label:"Sem resposta", value: sem.length, color:"#3a4a63" }
+    ], { titulo:"Respostas", centro: pct + "%" });
+
+    // acumulado de confirmacoes por dia (ultimos 30 dias ate o evento)
+    var porDia = {};
+    conf.forEach(function(x){ var d = String(x.r.submitted_at || x.r.updated_at || "").slice(0, 10); if(d) porDia[d] = (porDia[d] || 0) + 1; });
+    var diasOrd = Object.keys(porDia).sort();
+    var pontos = [], acum = 0;
+    if(diasOrd.length){
+      var ini = new Date(diasOrd[0] + "T00:00:00"), fim = new Date(Math.min(hoje.getTime(), new Date(EVENTO.data + "T00:00:00").getTime()));
+      for(var d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)){
+        var ch = d.toISOString().slice(0, 10);
+        acum += porDia[ch] || 0;
+        pontos.push({ x: ch.slice(8, 10) + "/" + ch.slice(5, 7), y: acum });
+      }
+    }
+    if(pontos.length > 1) linhaEG("evLinha", pontos, { cor:"#8fc79f", altura:200, unidade:"confirmado(s)" });
+    else $("evLinha").innerHTML = '<p class="vazio">Ainda não há confirmações suficientes pra desenhar a curva.</p>';
+
+    var tot = Math.max(1, base.length);
+    $("evBarra").innerHTML =
+      '<i style="width:' + (conf.length / tot * 100) + '%;background:#8fc79f;"></i>' +
+      '<i style="width:' + (nao.length / tot * 100) + '%;background:#d98a8a;"></i>' +
+      '<i style="width:' + (sem.length / tot * 100) + '%;background:#3a4a63;"></i>';
+    $("evLegenda").innerHTML =
+      '<span><i style="background:#8fc79f"></i><b>' + conf.length + '</b> confirmaram</span>' +
+      '<span><i style="background:#d98a8a"></i><b>' + nao.length + '</b> não vão</span>' +
+      '<span><i style="background:#3a4a63"></i><b>' + sem.length + '</b> sem resposta</span>';
+
+    function listaItens(el, itens, campo, vazio){
+      $(el).innerHTML = itens.length ? itens.map(function(x){
+        return '<div class="ev-item"><b>' + esc(x.a.full_name) + '</b><span>' + esc(x.r[campo]) + '</span></div>';
+      }).join("") : '<p class="vazio">' + vazio + '</p>';
+    }
+    listaItens("evRestricoes", rest, "dietary", "Nenhuma restrição informada até agora.");
+    listaItens("evNecessidades", nec, "special_needs", "Nenhuma necessidade especial informada.");
+
+    var lista = pares.filter(function(x){
+      if(evFiltro === "todos") return true;
+      if(evFiltro === "conjuge") return x.sit === "confirmado" && x.r.spouse;
+      return x.sit === evFiltro;
+    }).sort(function(x, y){ return String(x.a.full_name).localeCompare(String(y.a.full_name)); });
+    $("evNota").textContent = lista.length + " na lista · " + pct + "% da base respondeu";
+    var SELO = { confirmado:'<span class="selo ok">vai</span>', nao_vai:'<span class="selo risco">não vai</span>', sem_resposta:'<span class="selo">sem resposta</span>' };
+    $("tabEvento").innerHTML = lista.length ? lista.map(function(x){
+      var a = x.a, r = x.r;
+      return '<tr><td><span class="principal">' + esc(a.full_name) + waHtml(a.phone) + '</span><span class="secundario">' + esc(a.email || "") + '</span></td>' +
+        '<td>' + esc((r && r.badge_name) || "—") + '</td>' +
+        '<td>' + SELO[x.sit] + '</td>' +
+        '<td>' + (r ? (r.spouse === true ? "sim" : r.spouse === false ? "não" : "—") : "—") + '</td>' +
+        '<td>' + esc((r && r.dietary) || "—") + '</td>' +
+        '<td>' + esc((r && r.special_needs) || "—") + '</td>' +
+        '<td>' + esc((a.staff && a.staff.full_name) || "—") + '</td>' +
+        '<td class="num-col">' + (r ? evDataHora(r.submitted_at || r.updated_at) : "—") + '</td></tr>';
+    }).join("") : '<tr><td colspan="8" class="vazio">Ninguém nesse recorte.</td></tr>';
+  }
+  document.querySelectorAll("#chipsEv .chip").forEach(function(ch){
+    ch.addEventListener("click", function(){
+      document.querySelectorAll("#chipsEv .chip").forEach(function(c){ c.classList.remove("on"); });
+      ch.classList.add("on");
+      evFiltro = ch.getAttribute("data-ev");
+      renderEvento();
+    });
+  });
+
+  // ---------- ao vivo ----------
+  var DIAS = { segunda:"Segunda", terca:"Terça", quarta:"Quarta", quinta:"Quinta", sexta:"Sexta", sabado:"Sábado", domingo:"Domingo" };
+
+  function carregaAoVivo(){
+    Promise.all([
+      sb.from("lessons").select("id,title,lesson_type,weekday,event_date,scheduled_time,category,branch_id").in("lesson_type", ["semanal","evento"]),
+      sb.from("live_click_log").select("lesson_id,clicked_at")
+    ]).then(function(res){
+      if(res[0].error){ $("tabAoVivo").innerHTML = '<tr><td colspan="6" class="vazio">Erro: ' + esc(res[0].error.message) + '</td></tr>'; return; }
+      var aulas = res[0].data || [];
+      aulasAoVivo = aulas;
+      preencheMentoriasAula();
+      var cliques = res[1].data || [];
+
+      var stats = {}, seteDias = Date.now() - 7*86400000;
+      cliques.forEach(function(c){
+        var s = stats[c.lesson_id] || (stats[c.lesson_id] = { total:0, semana:0 });
+        s.total++;
+        if(new Date(c.clicked_at).getTime() >= seteDias) s.semana++;
+      });
+
+      var totalSemana = cliques.filter(function(c){ return new Date(c.clicked_at).getTime() >= seteDias; }).length;
+      // presenca real (Zoom), por aula
+      var pres = {};
+      presencas.forEach(function(x){
+        var s = pres[x.lesson_id] || (pres[x.lesson_id] = { total:0, dias:{} });
+        s.total++; s.dias[x.occurred_at] = (s.dias[x.occurred_at] || 0) + 1;
+      });
+      var alunosUnicosAoVivo = {}; presencas.forEach(function(x){ if(x.student_id) alunosUnicosAoVivo[x.student_id] = true; });
+      var temZoom = presencas.length > 0;
+      if($("avisoZoom")) $("avisoZoom").style.display = temZoom ? "none" : "";
+      $("kpisAoVivo").innerHTML = [
+        { rot:"Aulas e encontros", num: aulas.length, sub:"cadastrados no calendário" },
+        temZoom ? { rot:"Presenças registradas (Zoom)", num: presencas.length, sub: Object.keys(alunosUnicosAoVivo).length + " mentorados diferentes", cls:"ok" }
+                : { rot:"Presença (Zoom)", num:"—", sub:"ainda não sincronizado" },
+        { rot:"Cliques para entrar", num: cliques.length, sub:"desde o início" },
+        { rot:"Nos últimos 7 dias", num: totalSemana, sub:"cliques na plataforma" }
+      ].map(function(k){
+        return '<div class="kpi ' + (k.cls || "") + '"><div class="rot">' + k.rot + '</div>' +
+          '<div class="num">' + k.num + '</div><div class="sub">' + k.sub + '</div></div>';
+      }).join("");
+
+      $("notaAoVivo").textContent = aulas.length + " no calendário";
+      var ordenadas = aulas.slice().sort(function(a,b){
+        return ((stats[b.id] || {}).total || 0) - ((stats[a.id] || {}).total || 0);
+      });
+
+      $("tabAoVivo").innerHTML = ordenadas.length ? ordenadas.map(function(l){
+        var s = stats[l.id] || { total:0, semana:0 };
+        var b = branches.find(function(x){ return x.id === l.branch_id; });
+        var hora = l.scheduled_time ? String(l.scheduled_time).slice(0,5).replace(":", "h") : "";
+        var quando = l.lesson_type === "evento"
+          ? [dataCurta(l.event_date), hora].filter(Boolean).join(" · ")
+          : [DIAS[l.weekday] || l.weekday, hora].filter(Boolean).join(" · ");
+        var pz = pres[l.id];
+        var mediaPres = pz ? Math.round(pz.total / Object.keys(pz.dias).length) : null;
+        return '<tr><td><span class="principal">' + esc(l.title) + '</span>' +
+            (l.category ? '<span class="secundario">' + esc(l.category) + '</span>' : '') +
+            (pz ? '<span class="secundario" style="color:var(--green);">Zoom: média de ' + mediaPres + ' presentes em ' + Object.keys(pz.dias).length + ' aula(s)</span>' : '') + '</td>' +
+          '<td>' + esc(quando || "—") + '</td>' +
+          '<td>' + esc(b ? b.name : "Todas") + '</td>' +
+          '<td class="num-col">' + s.total + '</td>' +
+          '<td class="num-col">' + s.semana + '</td>' +
+          '<td><button class="btn btn-ghost btn-mini aula-editar" data-id="' + l.id + '">Editar</button></td></tr>';
+      }).join("") : '<tr><td colspan="6" class="vazio">Nenhuma aula ao vivo cadastrada. Quem cadastra é a CS, na aba Calendário.</td></tr>';
+
+      document.querySelectorAll(".aula-editar").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          var l = aulasAoVivo.find(function(x){ return x.id === btn.getAttribute("data-id"); });
+          if(l) abreAula(l);
+        });
+      });
+    });
+  }
+
+  // ---------- edicao de aula ----------
+  // A leitura de cliques ja vinha completa; o que faltava era poder corrigir
+  // horario, link ou titulo sem ter que pedir pra CS.
+  var aulasAoVivo = [], aulaEditando = null;
+
+  function preencheMentoriasAula(){
+    var sel = $("aulaMentoria");
+    if(!sel) return;
+    var atual = sel.value;
+    sel.innerHTML = '<option value="">Todas as mentorias</option>' +
+      branches.map(function(b){ return '<option value="' + b.id + '">' + esc(b.name) + '</option>'; }).join("");
+    sel.value = atual;
+  }
+
+  function alternaCamposAula(){
+    var evento = $("aulaTipo").value === "evento";
+    $("aulaDataWrap").style.display = evento ? "" : "none";
+    $("aulaDiaWrap").style.display = evento ? "none" : "";
+  }
+
+  $("aulaTipo").addEventListener("change", alternaCamposAula);
+  $("btnCancelarAula").addEventListener("click", function(){
+    aulaEditando = null;
+    $("painelAula").style.display = "none";
+  });
+
+  function abreAula(l){
+    aulaEditando = l.id;
+    preencheMentoriasAula();
+    $("aulaPainelTitulo").textContent = "Editar: " + (l.title || "aula");
+    $("aulaTitulo").value = l.title || "";
+    $("aulaTipo").value = l.lesson_type === "evento" ? "evento" : "semanal";
+    $("aulaMentoria").value = l.branch_id || "";
+    $("aulaDia").value = l.weekday || "segunda";
+    $("aulaData").value = l.event_date || "";
+    $("aulaHora").value = l.scheduled_time ? String(l.scheduled_time).slice(0, 5) : "";
+    $("aulaDuracao").value = l.duration_minutes == null ? "" : l.duration_minutes;
+
+    // categoria fora da lista padrao ganha uma opcao propria, senao o select
+    // cairia calado no primeiro item e a edicao trocaria a categoria sozinha
+    var cat = $("aulaCategoria");
+    var valor = l.category || "Geral";
+    if(!Array.prototype.some.call(cat.options, function(o){ return o.value === valor; })){
+      cat.insertAdjacentHTML("beforeend", '<option value="' + esc(valor) + '">' + esc(valor) + '</option>');
+    }
+    cat.value = valor;
+
+    $("aulaCapa").value = l.cover_url || "";
+    $("aulaDescricao").value = l.description || "";
+    $("aulaLink").value = l.link_url || "";
+    $("aulaZoom").value = l.zoom_meeting_id || "";
+    $("aulaErro").textContent = "";
+    $("aulaErro").style.color = "";
+    alternaCamposAula();
+    $("painelAula").style.display = "";
+    $("painelAula").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  $("btnSalvarAula").addEventListener("click", function(){
+    if(!aulaEditando) return;
+    var err = $("aulaErro");
+    err.style.color = "";
+    var titulo = $("aulaTitulo").value.trim();
+    var tipo = $("aulaTipo").value;
+    if(!titulo){ err.textContent = "Escreva o titulo."; return; }
+    if(tipo === "evento" && !$("aulaData").value){ err.textContent = "Escolha a data do encontro."; return; }
+
+    var dados = {
+      title: titulo,
+      lesson_type: tipo,
+      branch_id: $("aulaMentoria").value || null,
+      weekday: tipo === "semanal" ? $("aulaDia").value : null,
+      event_date: tipo === "evento" ? $("aulaData").value : null,
+      scheduled_time: $("aulaHora").value || null,
+      duration_minutes: $("aulaDuracao").value ? parseInt($("aulaDuracao").value, 10) : null,
+      category: $("aulaCategoria").value || null,
+      cover_url: $("aulaCapa").value.trim() || null,
+      description: $("aulaDescricao").value.trim() || null,
+      link_url: $("aulaLink").value.trim() || null,
+      zoom_meeting_id: $("aulaZoom").value.trim() || null
+    };
+
+    $("btnSalvarAula").disabled = true;
+    err.textContent = "Salvando...";
+    sb.from("lessons").update(dados).eq("id", aulaEditando).then(function(r){
+      $("btnSalvarAula").disabled = false;
+      if(r.error){ err.textContent = "Erro ao salvar: " + r.error.message; return; }
+      aulaEditando = null;
+      $("painelAula").style.display = "none";
+      carregaAoVivo();
+    });
+  });
+
+  // ---------- perfil DISC ----------
+  var DISC_COR = { D:"#d98a8a", I:"#e3bd76", S:"#8fc79f", C:"#8fb3e0" };
+  var DISC_NOME = { D:"Dominância", I:"Influência", S:"Estabilidade", C:"Conformidade" };
+  var DISC_RESUMO = {
+    D: "Direto, decidido, orientado a resultado. Gosta de desafio e de decidir rápido; impacienta-se com detalhe e com ritmo lento.",
+    I: "Comunicativo, entusiasmado, persuasivo. Gosta de gente e de reconhecimento; dispersa com rotina e com detalhe.",
+    S: "Paciente, leal, constante. Gosta de previsibilidade e de apoio; resiste a mudança brusca e a pressão.",
+    C: "Analítico, preciso, cuidadoso. Gosta de dado e de critério; desconfia de promessa vaga e de improviso."
+  };
+  var discSelecionado = null;
+
+  function discResultadoDe(a){
+    // disc_results nao tem created_at; se o aluno refez o teste, vale o
+    // ultimo registro na ordem em que veio
+    var lista = a.disc_results ? (Array.isArray(a.disc_results) ? a.disc_results : [a.disc_results]) : [];
+    return lista.length ? lista[lista.length - 1] : null;
+  }
+
+  function desenhaRadar(id, valores){
+    var el = $(id);
+    if(!el || typeof Chart === "undefined") return;
+    if(graficos[id]) graficos[id].destroy();
+    graficos[id] = new Chart(el, {
+      type:"radar",
+      data:{ labels:["D","I","S","C"], datasets:[{
+        data: valores, backgroundColor:"rgba(201,151,75,.22)", borderColor:"#e3bd76", borderWidth:2, pointBackgroundColor:"#e3bd76"
+      }]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+        scales:{ r:{ min:-12, max:12, ticks:{ display:false }, grid:{ color:"rgba(255,255,255,.08)" },
+                     angleLines:{ color:"rgba(255,255,255,.08)" }, pointLabels:{ color:"#f3f0e8", font:{ size:12, weight:"700", family:"Sora" } } } } }
+    });
+  }
+
+  function renderDisc(){
+    if(!$("tabDisc")) return;
+    var busca = ($("discBusca").value || "").trim().toLowerCase();
+    var fm = $("discMentoria").value, fc = $("discCs").value, fp = $("discPerfil").value, fs = $("discSit").value;
+
+    var pares = alunos.map(function(a){ return { a:a, r:discResultadoDe(a) }; }).filter(function(x){
+      var a = x.a, r = x.r;
+      if(fs === "sim" && !r) return false;
+      if(fs === "nao" && r) return false;
+      if(fp && (!r || r.primary_profile !== fp)) return false;
+      if(fm && mentoriasDe(a).indexOf(fm) === -1) return false;
+      if(fc && ((a.staff && a.staff.full_name) || "") !== fc) return false;
+      if(busca && ((a.full_name || "").toLowerCase() + " " + (a.email || "").toLowerCase()).indexOf(busca) === -1) return false;
+      return true;
+    });
+    var com = pares.filter(function(x){ return x.r; });
+
+    var porPerfil = { D:0, I:0, S:0, C:0 }, soma = { D:0, I:0, S:0, C:0 };
+    com.forEach(function(x){
+      porPerfil[x.r.primary_profile] = (porPerfil[x.r.primary_profile] || 0) + 1;
+      soma.D += Number(x.r.d_score) || 0; soma.I += Number(x.r.i_score) || 0;
+      soma.S += Number(x.r.s_score) || 0; soma.C += Number(x.r.c_score) || 0;
+    });
+    var maisComum = Object.keys(porPerfil).sort(function(x, y){ return porPerfil[y] - porPerfil[x]; })[0];
+    var n = com.length || 1;
+
+    $("kpisDisc").innerHTML = [
+      { rot:"Responderam o teste", num: com.length, sub:"de " + pares.length + " no recorte", cls: com.length ? "ok" : "alerta" },
+      { rot:"Ainda não responderam", num: pares.length - com.length, sub:"o teste é no primeiro acesso ao Portal", cls:"alerta" },
+      { rot:"Perfil mais comum", num: com.length ? maisComum : "—", sub: com.length ? DISC_NOME[maisComum] : "sem respostas ainda" },
+      { rot:"Cobertura", num: pares.length ? Math.round(com.length / pares.length * 100) + "<small>%</small>" : "—", sub:"da base com perfil conhecido" }
+    ].map(function(k){
+      return '<div class="kpi ' + (k.cls || "") + '"><div class="rot">' + k.rot + '</div><div class="num">' + k.num + '</div><div class="sub">' + esc(k.sub) + '</div></div>';
+    }).join("");
+
+    donutEG("dDiscPerfis", ["D","I","S","C"].map(function(k){
+      return { label: k + " · " + DISC_NOME[k], value: porPerfil[k], color: DISC_COR[k] };
+    }), { titulo:"Com teste", size:180 });
+    desenha("gDiscMedias", "bar", ["D", "I", "S", "C"],
+      [soma.D / n, soma.I / n, soma.S / n, soma.C / n].map(function(v){ return Math.round(v * 10) / 10; }),
+      { scales:{ x:{ grid:{ display:false }, ticks:{ color:"#6d7994" } }, y:{ suggestedMin:-12, suggestedMax:12, grid:{ color:"rgba(255,255,255,.06)" }, ticks:{ color:"#6d7994" } } } });
+    if(graficos.gDiscMedias){ graficos.gDiscMedias.data.datasets[0].backgroundColor = [DISC_COR.D, DISC_COR.I, DISC_COR.S, DISC_COR.C]; graficos.gDiscMedias.update(); }
+
+    $("notaDisc").textContent = pares.length + " mentorado(s)";
+    var ordenados = pares.slice().sort(function(x, y){
+      if(!!x.r !== !!y.r) return x.r ? -1 : 1;
+      return (x.a.full_name || "").localeCompare(y.a.full_name || "");
+    });
+
+    function barra(v, letra){
+      var pct = Math.round((Number(v) + 12) / 24 * 100);
+      return '<span class="num-col">' + (v > 0 ? "+" : "") + v + '</span><div class="barra" style="min-width:60px;"><i style="width:' + pct + '%;background:' + DISC_COR[letra] + ';"></i></div>';
+    }
+
+    $("tabDisc").innerHTML = ordenados.length ? ordenados.slice(0, 300).map(function(x){
+      var a = x.a, r = x.r;
+      var nome = '<span class="principal">' + esc(a.full_name) + '</span><span class="secundario">' + esc(a.email || "") + '</span>';
+      var base = '<td>' + nome + '</td><td>' + esc(mentoriasDe(a).join(", ") || "—") + '</td><td>' + esc((a.staff && a.staff.full_name) || "—") + '</td>';
+      if(!r) return '<tr style="opacity:.55;">' + base + '<td colspan="5"><span class="secundario">ainda não respondeu</span></td><td></td></tr>';
+      var p = r.primary_profile;
+      return '<tr class="disc-linha" data-id="' + a.id + '" style="cursor:pointer;' + (discSelecionado === a.id ? 'background:rgba(201,151,75,.07);' : '') + '">' + base +
+        '<td><span class="selo" style="border-color:' + DISC_COR[p] + ';color:' + DISC_COR[p] + ';">' + p + ' · ' + DISC_NOME[p] + '</span></td>' +
+        '<td>' + barra(r.d_score, "D") + '</td><td>' + barra(r.i_score, "I") + '</td><td>' + barra(r.s_score, "S") + '</td><td>' + barra(r.c_score, "C") + '</td>' +
+        '<td class="num-col">' + dataCurta(a.disc_completed_at) + '</td></tr>';
+    }).join("") : '<tr><td colspan="9" class="vazio">Nenhum mentorado nesse recorte.</td></tr>';
+
+    document.querySelectorAll("#tabDisc .disc-linha").forEach(function(tr){
+      tr.addEventListener("click", function(){
+        discSelecionado = discSelecionado === tr.getAttribute("data-id") ? null : tr.getAttribute("data-id");
+        renderDisc();
+      });
+    });
+
+    var box = $("discDetalhe");
+    var sel = alunos.find(function(a){ return a.id === discSelecionado; });
+    var rs = sel ? discResultadoDe(sel) : null;
+    if(!sel || !rs){ box.style.display = "none"; box.innerHTML = ""; return; }
+    var p = rs.primary_profile;
+    var ordem = ["D","I","S","C"].map(function(k){ return { k:k, v:Number(rs[k.toLowerCase() + "_score"]) || 0 }; }).sort(function(x, y){ return y.v - x.v; });
+    box.style.display = "";
+    box.innerHTML =
+      '<div class="painel" style="border-color:' + DISC_COR[p] + '55;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:12px;">' +
+          '<h4 style="margin:0;">' + esc(sel.full_name) + ' <span class="selo" style="border-color:' + DISC_COR[p] + ';color:' + DISC_COR[p] + ';margin-left:8px;">' + p + ' · ' + DISC_NOME[p] + '</span></h4>' +
+          '<button class="btn btn-ghost btn-mini" id="discFechar">Fechar</button></div>' +
+        '<div style="display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:22px;align-items:center;">' +
+          '<div style="position:relative;height:240px;"><canvas id="gDiscAluno"></canvas></div>' +
+          '<div><p style="margin:0 0 10px;font-size:13px;line-height:1.6;">' + DISC_RESUMO[p] + '</p>' +
+          '<p class="dica" style="margin:0;">Perfil secundário: <b style="color:' + DISC_COR[ordem[1].k] + ';">' + ordem[1].k + ' · ' + DISC_NOME[ordem[1].k] + '</b> — ' + DISC_RESUMO[ordem[1].k] + '</p></div>' +
+        '</div>' +
+      '</div>';
+    desenhaRadar("gDiscAluno", [rs.d_score, rs.i_score, rs.s_score, rs.c_score]);
+    $("discFechar").addEventListener("click", function(){ discSelecionado = null; renderDisc(); });
+  }
+
+  ["discBusca","discMentoria","discCs","discPerfil","discSit"].forEach(function(id){
+    var el = $(id);
+    if(el){ el.addEventListener("change", renderDisc); el.addEventListener("input", renderDisc); }
+  });
+
+  // ---------- recados ----------
+  // A tabela e `announcements` — "recados" e so o nome do bucket de anexos.
+  // Esta tela lia `recados` como se fosse tabela, entao a aba nunca mostrou
+  // nada e o erro passava despercebido.
+  var recados = [], recadoEditando = null, recadoTodas = true, recadoMentorias = {};
+
+  function montaChipsRecado(){
+    var alvo = $("recChips");
+    if(!alvo) return;
+    alvo.innerHTML =
+      '<button type="button" class="chip' + (recadoTodas ? " on" : "") + '" data-todas="1">Todas as mentorias</button>' +
+      branches.map(function(b){
+        return '<button type="button" class="chip' + (!recadoTodas && recadoMentorias[b.id] ? " on" : "") +
+          '" data-b="' + b.id + '">' + esc(b.name) + '</button>';
+      }).join("");
+
+    alvo.querySelectorAll(".chip").forEach(function(c){
+      c.addEventListener("click", function(){
+        if(c.getAttribute("data-todas")){
+          recadoTodas = true; recadoMentorias = {};
+        } else {
+          recadoTodas = false;
+          var id = c.getAttribute("data-b");
+          if(recadoMentorias[id]) delete recadoMentorias[id]; else recadoMentorias[id] = true;
+          // sem nenhuma marcada o recado nao chegaria a ninguem — volta pra "todas"
+          if(!Object.keys(recadoMentorias).length) recadoTodas = true;
+        }
+        montaChipsRecado();
+      });
+    });
+  }
+
+  function limpaFormRecado(){
+    recadoEditando = null;
+    recadoTodas = true;
+    recadoMentorias = {};
+    ["recTitulo","recMensagem","recLink","recVence"].forEach(function(id){ $(id).value = ""; });
+    $("recPainelTitulo").textContent = "Publicar recado";
+    $("btnPublicarRec").textContent = "Publicar recado";
+    $("btnCancelarRec").style.display = "none";
+    $("recErro").textContent = "";
+    $("recErro").style.color = "";
+    montaChipsRecado();
+  }
+
+  function editaRecado(a){
+    recadoEditando = a.id;
+    $("recTitulo").value = a.title || "";
+    $("recMensagem").value = a.message || "";
+    $("recLink").value = a.link_url || "";
+    $("recVence").value = a.expires_at ? String(a.expires_at).slice(0, 10) : "";
+    recadoTodas = !!a.all_branches;
+    recadoMentorias = {};
+    (a.announcement_branches || []).forEach(function(x){ recadoMentorias[x.branch_id] = true; });
+    $("recPainelTitulo").textContent = "Editar recado";
+    $("btnPublicarRec").textContent = "Salvar alteracoes";
+    $("btnCancelarRec").style.display = "";
+    $("recErro").textContent = "";
+    $("recErro").style.color = "";
+    montaChipsRecado();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  $("btnCancelarRec").addEventListener("click", limpaFormRecado);
+
+  $("btnPublicarRec").addEventListener("click", function(){
+    var err = $("recErro");
+    err.style.color = "";
+    var mensagem = $("recMensagem").value.trim();
+    if(!mensagem){ err.textContent = "Escreva a mensagem do recado."; return; }
+
+    var vence = $("recVence").value;
+    var dados = {
+      title: $("recTitulo").value.trim() || null,
+      message: mensagem,
+      link_url: $("recLink").value.trim() || null,
+      all_branches: recadoTodas,
+      expires_at: vence ? new Date(vence + "T23:59:59").toISOString() : null
+    };
+
+    $("btnPublicarRec").disabled = true;
+    err.textContent = "Salvando...";
+
+    function vinculaMentorias(id){
+      sb.from("announcement_branches").delete().eq("announcement_id", id).then(function(){
+        var ids = recadoTodas ? [] : Object.keys(recadoMentorias);
+
+        function fim(erroVinculo){
+          $("btnPublicarRec").disabled = false;
+          if(erroVinculo){ err.textContent = "Recado salvo, mas nao gravei as mentorias: " + erroVinculo; return; }
+          var editou = !!recadoEditando;
+          limpaFormRecado();
+          $("recErro").style.color = "var(--green)";
+          $("recErro").textContent = editou ? "Recado atualizado." : "Recado publicado. Ja aparece no Portal do Aluno.";
+          carregaRecados();
+        }
+
+        if(!ids.length){ fim(null); return; }
+        sb.from("announcement_branches")
+          .insert(ids.map(function(b){ return { announcement_id: id, branch_id: b }; }))
+          .then(function(r){ fim(r.error ? r.error.message : null); });
+      });
+    }
+
+    if(recadoEditando){
+      sb.from("announcements").update(dados).eq("id", recadoEditando).then(function(r){
+        if(r.error){ $("btnPublicarRec").disabled = false; err.textContent = "Erro ao salvar: " + r.error.message; return; }
+        vinculaMentorias(recadoEditando);
+      });
+    } else {
+      dados.created_by = eu ? eu.id : null;
+      sb.from("announcements").insert(dados).select().single().then(function(r){
+        if(r.error){ $("btnPublicarRec").disabled = false; err.textContent = "Erro ao publicar: " + r.error.message; return; }
+        vinculaMentorias(r.data.id);
+      });
+    }
+  });
+
+  function carregaRecados(){
+    sb.from("announcements")
+      .select("id,title,message,link_url,attachment_url,attachment_name,all_branches,expires_at,created_at,created_by,staff:created_by(full_name),announcement_branches(branch_id)")
+      .order("created_at", { ascending: false })
+      .then(function(r){
+        if(r.error){ $("listaRecados").innerHTML = '<p class="vazio">Erro ao ler os recados: ' + esc(r.error.message) + '</p>'; return; }
+        recados = r.data || [];
+        montaChipsRecado();
+        $("notaRecados").textContent = recados.length + " recado(s)";
+
+        $("listaRecados").innerHTML = recados.length ? recados.map(function(a){
+          var vencido = a.expires_at && new Date(a.expires_at).getTime() < Date.now();
+          var alvos = a.all_branches
+            ? '<span class="selo">Todas as mentorias</span>'
+            : (a.announcement_branches || []).map(function(x){
+                var b = branches.find(function(y){ return y.id === x.branch_id; });
+                return '<span class="selo">' + esc(b ? b.name : "mentoria") + '</span>';
+              }).join(" ");
+          var autor = (a.staff && a.staff.full_name) || "equipe";
+
+          return '<div class="painel" style="margin-bottom:12px;' + (vencido ? "opacity:.55;" : "") + '">' +
+            '<div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;">' +
+              '<h4 style="margin:0;">' + esc(a.title || "Recado") + '</h4>' +
+              '<div class="acao-linha">' +
+                '<button class="btn btn-ghost btn-mini rec-editar" data-id="' + a.id + '">Editar</button>' +
+                '<button class="btn btn-ghost btn-mini rec-apagar" data-id="' + a.id + '">Excluir</button>' +
+              '</div>' +
+            '</div>' +
+            '<p style="margin:10px 0;font-size:12.5px;color:var(--txt-2);white-space:pre-wrap;">' + esc(a.message || "") + '</p>' +
+            (a.link_url ? '<p style="margin:0 0 8px;"><a href="' + esc(a.link_url) + '" target="_blank" rel="noopener" style="color:var(--gold-lit);font-size:12px;">' + esc(a.link_url) + '</a></p>' : '') +
+            (a.attachment_url ? '<p style="margin:0 0 8px;"><a href="' + esc(a.attachment_url) + '" target="_blank" rel="noopener" style="color:var(--gold-lit);font-size:12px;">' + esc(a.attachment_name || "anexo") + '</a></p>' : '') +
+            '<div style="margin-bottom:8px;">' + alvos + '</div>' +
+            '<p class="dica" style="margin:0;">' + esc(autor) + ' \u00b7 ' + dataCurta(a.created_at) +
+              (a.expires_at ? (vencido ? ' \u00b7 venceu em ' : ' \u00b7 vence em ') + dataCurta(a.expires_at) : '') + '</p>' +
+          '</div>';
+        }).join("") : '<p class="vazio">Nenhum recado publicado ainda.</p>';
+
+        document.querySelectorAll(".rec-editar").forEach(function(btn){
+          btn.addEventListener("click", function(){
+            var a = recados.find(function(x){ return x.id === btn.getAttribute("data-id"); });
+            if(a) editaRecado(a);
+          });
+        });
+        document.querySelectorAll(".rec-apagar").forEach(function(btn){
+          btn.addEventListener("click", function(){
+            if(!confirm("Excluir esse recado? Os mentorados deixam de ve-lo.")) return;
+            btn.disabled = true;
+            sb.from("announcements").delete().eq("id", btn.getAttribute("data-id")).then(function(r){
+              if(r.error){ btn.disabled = false; alert("Erro ao excluir: " + r.error.message); return; }
+              carregaRecados();
+            });
+          });
+        });
+      });
+  }
+
+  confereAcesso();
+})();
+</script>
+</body>
+</html>

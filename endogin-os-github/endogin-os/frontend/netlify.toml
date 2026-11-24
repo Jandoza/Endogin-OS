@@ -1,0 +1,18 @@
+# Só as quatro páginas e os assets são públicos. O resto do repositório
+# (migrations SQL, código das Edge Functions, arquivos de trabalho) não
+# tem por que ser servido pelo site.
+[build]
+  # Publica só o que é site: as páginas e os assets. SQL, código das funções
+  # e arquivos de trabalho ficam fora do que o Netlify sobe.
+  command = "rm -rf dist && mkdir -p dist && cp *.html dist/ && cp -r assets dist/assets"
+  publish = "dist"
+
+# Cabeçalhos de proteção do navegador
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"

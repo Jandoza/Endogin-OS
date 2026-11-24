@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Portal do Aluno — Endogin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<style>
+  :root{
+    --eg-bg-0:#080d17; --eg-bg-1:#101d2e; --eg-bg-2:#152436; --eg-bg-3:#1c2f54;
+    --eg-gold-100:#f2dfae; --eg-gold-300:#e3bd76; --eg-gold-500:#c9974b; --eg-gold-700:#a3762f;
+    --eg-text-primary:#f3f0e8; --eg-text-secondary:#aab4c9; --eg-text-muted:#6d7994; --eg-navy-line:rgba(255,255,255,0.06);
+    --eg-border:rgba(201,151,75,0.22); --eg-border-strong:rgba(201,151,75,0.35);
+    --eg-red:#d98a8a; --eg-green:#8fc79f;
+    --eg-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --eg-ease:cubic-bezier(.22,.75,.28,1);
+    --amb-a:201,151,75; --amb-b:120,150,200;
+  }
+  *{box-sizing:border-box;}
+  a{color:inherit;text-decoration:none;}
+  body{
+    margin:0;font-family:'Montserrat',sans-serif;color:var(--eg-text-primary);min-height:100vh;
+    background:radial-gradient(1200px 700px at 15% -10%, #16273c 0%, #0b1420 55%), #0b1420;
+  }
+  /* Grade quase invisivel por tras de tudo. E o que separa "fundo escuro" de
+     "superficie desenhada": sem textura, todo tema escuro vira o mesmo tema
+     escuro. Fica em z-index -1 pra nunca disputar com o conteudo. */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background-size:64px 64px;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,.022) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,.022) 1px, transparent 1px);
+    -webkit-mask-image:radial-gradient(1000px 720px at 50% 0%, #000 0%, transparent 78%);
+    mask-image:radial-gradient(1000px 720px at 50% 0%, #000 0%, transparent 78%);
+  }
+  label{display:block;font-size:10.5px;color:var(--eg-text-muted);margin-bottom:5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;}
+  input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{
+    width:100%;background:var(--eg-bg-2);border:1px solid var(--eg-navy-line);border-radius:8px;color:var(--eg-text-primary);
+    padding:11px 12px;font-family:inherit;font-size:13px;margin-bottom:16px;outline:none;
+  }
+  textarea{resize:vertical;line-height:1.5;}
+  .btn-primary{
+    font-family:inherit;font-size:13px;font-weight:700;padding:13px 20px;border-radius:10px;border:none;
+    background:linear-gradient(140deg,var(--eg-gold-300),var(--eg-gold-700));color:#221708;cursor:pointer;
+    box-shadow:0 8px 22px -10px rgba(201,151,75,.65), inset 0 1px 0 rgba(255,255,255,.28);
+    transition:transform .3s var(--eg-ease), box-shadow .3s var(--eg-ease), filter .3s var(--eg-ease);
+  }
+  .btn-primary:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 16px 32px -12px rgba(201,151,75,.75), inset 0 1px 0 rgba(255,255,255,.34);}
+  .btn-primary:active:not(:disabled){transform:translateY(0);}
+  .btn-primary:disabled{opacity:0.55;cursor:default;box-shadow:none;}
+  .btn-secondary{
+    font-family:inherit;font-size:12.5px;font-weight:700;color:var(--eg-gold-100);
+    background:linear-gradient(150deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+    border:1px solid rgba(255,255,255,.09);padding:12px 18px;border-radius:10px;cursor:pointer;
+    transition:transform .3s var(--eg-ease), border-color .3s var(--eg-ease), background .3s var(--eg-ease);
+  }
+  .btn-secondary:hover{transform:translateY(-2px);border-color:var(--eg-border-strong);background:linear-gradient(150deg,rgba(201,151,75,.16),rgba(255,255,255,.02));}
+  .err-msg{color:var(--eg-red);font-size:12px;margin:10px 0 0;min-height:14px;line-height:1.5;}
+  .hint{font-size:11.5px;color:var(--eg-text-muted);text-align:center;}
+
+  /* ===================== AUTH (login / onboarding) ===================== */
+  .auth-wrap{display:flex;align-items:center;justify-content:center;padding:24px;min-height:100vh;}
+  .card{background:var(--eg-bg-1);border:1px solid var(--eg-navy-line);border-radius:18px;padding:38px 34px;width:100%;max-width:420px;}
+  .brand{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:28px;}
+  .brand-mark{height:42px;width:auto;display:flex;align-items:center;flex-shrink:0;}
+  .brand-mark img{height:42px;width:auto;display:block;}
+  .brand-word .cs{display:block;font-size:9px;letter-spacing:3px;color:var(--eg-text-muted);font-weight:600;text-align:center;}
+  .brand-word .name{display:block;font-family:'Sora',sans-serif;font-weight:600;font-size:19px;background:linear-gradient(180deg,var(--eg-gold-100),var(--eg-gold-500));-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center;}
+
+  .form-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-bottom:16px;}
+  .form-2col label{display:block;font-size:11.5px;font-weight:600;color:var(--eg-text-secondary);margin-bottom:5px;}
+  @media (max-width:520px){ .form-2col{grid-template-columns:1fr;} }
+  [data-screen] textarea{width:100%;border-radius:10px;border:1px solid var(--eg-border);background:var(--eg-bg-2);color:var(--eg-text-primary);padding:10px 12px;font-family:inherit;font-size:14px;resize:vertical;}
+  [data-screen] textarea:focus{outline:none;border-color:var(--eg-gold-500);}
+  [data-screen] label{display:block;font-size:11.5px;font-weight:600;color:var(--eg-text-secondary);margin-bottom:5px;}
+  .step-title{font-size:16px;font-weight:700;margin-bottom:6px;text-align:center;}
+  .step-sub{font-size:12.5px;color:var(--eg-text-secondary);text-align:center;margin-bottom:22px;line-height:1.6;}
+  .nps-scale{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;}
+  .nps-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--eg-navy-line);background:var(--eg-bg-2);color:var(--eg-text-secondary);font-weight:700;font-size:13px;cursor:pointer;}
+  .nps-btn.selected{background:linear-gradient(90deg,var(--eg-gold-700),var(--eg-gold-500));color:#221708;border-color:var(--eg-gold-500);}
+  .nps-labels{display:flex;justify-content:space-between;font-size:10.5px;color:var(--eg-text-muted);margin-bottom:22px;}
+
+  .photo-drop{width:110px;height:110px;border-radius:50%;margin:0 auto 20px;border:1.5px dashed var(--eg-border-strong);position:relative;display:flex;align-items:center;justify-content:center;color:var(--eg-text-secondary);font-size:12px;cursor:pointer;overflow:hidden;background-size:cover;background-position:center;}
+  .photo-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .photo-drop i{font-size:22px;color:var(--eg-gold-300);}
+
+  .logout-link{display:block;text-align:center;font-size:11.5px;color:var(--eg-text-muted);margin-top:16px;cursor:pointer;text-decoration:underline;}
+
+  /* ---------- teste comportamental (DISC), etapa do primeiro acesso ---------- */
+  .disc-prog-row{display:flex;justify-content:space-between;font-size:11px;color:var(--eg-text-muted);margin-bottom:6px;}
+  .disc-bar-track{height:6px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden;margin-bottom:18px;}
+  .disc-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--eg-gold-700),var(--eg-gold-300));width:0%;transition:width .2s ease;}
+  .disc-word-row{background:var(--eg-bg-2);border:1px solid var(--eg-navy-line);border-radius:10px;padding:11px 13px;margin-bottom:9px;}
+  .disc-word-row .word{display:block;font-size:13.5px;font-weight:600;margin-bottom:9px;}
+  .disc-pick-row{display:flex;gap:8px;}
+  .disc-pick-btn{
+    flex:1;height:32px;border-radius:7px;border:1px solid var(--eg-navy-line);background:var(--eg-bg-1);
+    color:var(--eg-text-muted);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.2px;
+  }
+  .disc-pick-btn.mais.active{background:rgba(201,151,75,0.22);border-color:var(--eg-gold-500);color:var(--eg-gold-100);}
+  .disc-pick-btn.menos.active{background:rgba(255,255,255,0.1);border-color:var(--eg-text-muted);color:var(--eg-text-primary);}
+  .disc-nav-row{display:flex;justify-content:space-between;gap:10px;margin-top:6px;}
+  .disc-nav-row .btn-primary{flex:1;}
+  .disc-nav-row .btn-secondary{flex:0 0 auto;}
+
+  [data-screen]{display:none;}
+  [data-screen].active{display:block;}
+
+  /* ===================== APP SHELL (dashboard real) ===================== */
+  .page{display:flex;align-items:flex-start;max-width:1400px;margin:0 auto;}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 34px 92px;}
+  .main-content{flex:1;min-width:0;}
+  .page-view{display:none;}
+  .page-view.active{display:block;}
+
+  .side-nav{
+    width:216px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;
+    display:flex;flex-direction:column;padding:24px 15px 18px;border-right:1px solid var(--eg-navy-line);
+  }
+  .side-brand{display:flex;align-items:center;gap:11px;padding:0 5px 20px;margin-bottom:14px;border-bottom:1px solid var(--eg-navy-line);}
+  .side-links{display:flex;flex-direction:column;gap:3px;}
+  .side-link{
+    position:relative;display:flex;align-items:center;gap:11px;padding:11px 12px 11px 14px;border-radius:10px;
+    font-size:12.5px;font-weight:600;color:var(--eg-text-secondary);border:1px solid transparent;
+    background:none;width:100%;text-align:left;font-family:inherit;cursor:pointer;
+    transition:background .3s var(--eg-ease), color .3s var(--eg-ease), padding-left .3s var(--eg-ease);
+  }
+  /* Trilho dourado a esquerda em vez de um retangulo colorido: marca a pagina
+     atual sem pintar o bloco inteiro. */
+  .side-link::before{
+    content:"";position:absolute;left:0;top:9px;bottom:9px;width:2px;border-radius:2px;
+    background:linear-gradient(180deg,var(--eg-gold-300),var(--eg-gold-700));
+    transform:scaleY(0);transform-origin:top;transition:transform .35s var(--eg-ease);
+  }
+  .side-link i{width:15px;text-align:center;color:var(--eg-text-muted);font-size:13px;flex-shrink:0;transition:color .3s var(--eg-ease);}
+  .side-link:hover{background:rgba(255,255,255,.035);color:var(--eg-text-primary);padding-left:18px;}
+  .side-link:hover::before{transform:scaleY(.5);}
+  .side-link.active{background:rgba(201,151,75,0.10);color:var(--eg-gold-100);}
+  .side-link.active::before{transform:scaleY(1);}
+  .side-link.active i{color:var(--eg-gold-300);}
+  .side-cta{margin-top:auto;padding-top:16px;border-top:1px solid var(--eg-navy-line);}
+  .side-cta-card{
+    border-radius:14px;padding:15px;border:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(155deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.012) 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .side-cta-card b{display:block;font-size:12.5px;margin-bottom:2px;}
+  .side-cta-card span{display:block;font-size:10.5px;color:var(--eg-text-muted);margin-bottom:10px;}
+  .cs-btn{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
+    padding:10px;border-radius:8px;background:var(--eg-bg-2);border:1px solid var(--eg-border);
+    font-size:12px;font-weight:700;color:var(--eg-text-primary);cursor:pointer;font-family:inherit;
+  }
+  .cs-btn{transition:transform .3s var(--eg-ease), background .3s var(--eg-ease), color .3s var(--eg-ease);}
+  .cs-btn:hover{background:linear-gradient(140deg,var(--eg-gold-300),var(--eg-gold-700));color:#221708;border-color:transparent;transform:translateY(-2px);}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+    padding:20px 0 18px;border-bottom:1px solid var(--eg-navy-line);margin-bottom:24px;
+  }
+  .topbar-eyebrow{font-size:10.5px;letter-spacing:2.5px;color:var(--eg-text-muted);font-weight:700;}
+  .topbar-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .topbar-right{display:flex;align-items:center;gap:14px;}
+  .badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;letter-spacing:0.3px;}
+  .badge.gold{background:rgba(201,151,75,0.16);color:var(--eg-gold-100);border:1px solid var(--eg-border-strong);}
+  .badge.muted{background:rgba(255,255,255,0.05);color:var(--eg-text-muted);border:1px solid var(--eg-navy-line);}
+  .cs-pill{display:flex;align-items:center;gap:8px;background:var(--eg-bg-1);border:1px solid var(--eg-border);padding:5px 13px 5px 5px;border-radius:999px;font-size:12px;color:var(--eg-text-secondary);}
+  .cs-pill .av{width:24px;height:24px;border-radius:50%;background:var(--eg-bg-3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--eg-gold-100);}
+  .student-av{
+    width:38px;height:38px;border-radius:50%;background:linear-gradient(145deg,var(--eg-gold-300),var(--eg-gold-700));
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#241705;
+    background-size:cover;background-position:center;
+    box-shadow:0 0 0 1px rgba(201,151,75,.35), 0 0 0 4px rgba(201,151,75,.10);
+  }
+
+  @keyframes fadeSlideUp{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
+  @keyframes heroGradientShift{ 0%{ background-position:0% 50%; } 50%{ background-position:100% 50%; } 100%{ background-position:0% 50%; } }
+  @keyframes checkPop{ 0%{ transform:scale(0.55); } 65%{ transform:scale(1.18); } 100%{ transform:scale(1); } }
+  @keyframes softPulse{ 0%, 100%{ opacity:1; } 50%{ opacity:0.55; } }
+
+  /* Identificacao do aluno. Substituiu o antigo bloco .hero + os tres cartoes
+     de indicador: "Mentoria(s) ativa(s)", "CS responsavel" e "Status" nao eram
+     metricas, eram campos do cadastro num quadro com icone. Viraram uma linha
+     de contexto, e o topo da tela passou a ser o proximo passo do aluno. */
+  .who{margin-bottom:6px;}
+  /* O nome do aluno e a primeira coisa da tela e estava do tamanho de um
+     subtitulo. Aqui ele vira a abertura de verdade, com o degrade metalico
+     que a marca ja usa no logotipo. */
+  .who h1{
+    font-family:'Sora',sans-serif;font-weight:700;font-size:clamp(29px,3.6vw,44px);
+    margin:0 0 9px;letter-spacing:-0.03em;line-height:1.05;
+    background:linear-gradient(178deg,var(--eg-text-primary) 0%,rgba(243,240,232,.52) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 26px rgba(243,240,232,.09));
+  }
+  .facts{display:flex;flex-wrap:wrap;gap:6px 13px;font-size:12.5px;color:var(--eg-text-muted);margin:0;padding:0;list-style:none;}
+  .facts li{display:flex;align-items:center;gap:13px;}
+  .facts li::after{content:"";width:3px;height:3px;border-radius:50%;background:currentColor;opacity:0.5;}
+  .facts li:last-child::after{display:none;}
+  .facts b{color:var(--eg-text-secondary);font-weight:600;}
+  .who-eyebrow{
+    font-family:var(--eg-mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--eg-gold-300);margin-bottom:7px;
+  }
+  .who-sub{margin:0 0 30px;color:var(--eg-text-secondary);font-size:13.5px;max-width:62ch;line-height:1.7;}
+
+  /* ===================== percurso do aluno =====================
+     A tela antiga escondia o que ja estava pronto: `journeyPending` sumia
+     inteiro quando o aluno terminava, e o card da trilha sumia quando nao
+     havia aula. Sobrava meia tela em branco justamente pra quem tinha
+     avancado mais. Aqui e o contrario: o percurso inteiro fica visivel, e a
+     etapa vencida vira um ponto preenchido com a data — o aluno ve o caminho
+     que andou, nao so o que falta. */
+  .percurso{margin:0 0 26px;}
+  .percurso-top{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:9px;flex-wrap:wrap;}
+  .percurso-etapas{font-family:'Sora',sans-serif;font-size:14px;font-weight:600;color:var(--eg-text-primary);}
+  .percurso-etapas b{color:var(--eg-gold-300);}
+  .percurso-nota{font-size:12px;color:var(--eg-text-muted);}
+  .percurso-track{height:4px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4);}
+  .percurso-track i{
+    display:block;height:100%;width:0;border-radius:99px;
+    background:linear-gradient(90deg,var(--eg-gold-700),var(--eg-gold-300));
+    box-shadow:0 0 14px rgba(227,189,118,.45);
+    transition:width 1s var(--eg-ease);
+  }
+
+  .linha{list-style:none;margin:0 0 34px;padding:0;position:relative;}
+  .linha::before{
+    content:"";position:absolute;left:11px;top:14px;bottom:16px;width:1px;
+    background:linear-gradient(180deg,var(--eg-gold-500) 0%,rgba(201,151,75,.35) 55%,rgba(255,255,255,.07) 100%);
+  }
+  .etapa{position:relative;padding:0 0 18px 42px;}
+  .etapa:last-child{padding-bottom:0;}
+  .ponto{
+    position:absolute;left:0;top:1px;width:23px;height:23px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:10px;
+    background:var(--eg-bg-0);border:1px solid var(--eg-navy-line);color:var(--eg-text-muted);
+    transition:transform .3s var(--eg-ease);
+  }
+  .etapa.feita .ponto{
+    background:linear-gradient(145deg,var(--eg-gold-300),var(--eg-gold-700));
+    border-color:var(--eg-gold-500);color:#20160a;
+    box-shadow:0 0 16px rgba(201,151,75,.34);
+  }
+  .etapa.agora .ponto{
+    border:2px solid var(--eg-gold-300);color:var(--eg-gold-300);background:var(--eg-bg-1);
+    box-shadow:0 0 0 0 rgba(227,189,118,.4);animation:pontoPulsa 2.8s ease-in-out infinite;
+  }
+  @keyframes pontoPulsa{0%,100%{box-shadow:0 0 0 0 rgba(227,189,118,.38);}50%{box-shadow:0 0 0 7px rgba(227,189,118,0);}}
+
+  .etapa-linha{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .etapa-nome{font-family:'Sora',sans-serif;font-size:14px;font-weight:600;color:var(--eg-text-primary);margin:0;}
+  .etapa.feita .etapa-nome,.etapa.depois .etapa-nome{color:var(--eg-text-secondary);font-weight:500;}
+  .etapa-quando{font-family:var(--eg-mono);font-size:10.5px;letter-spacing:.06em;color:var(--eg-text-muted);white-space:nowrap;}
+  .etapa.feita .etapa-quando{color:var(--eg-green);}
+  .etapa-nota{margin:4px 0 0;font-size:12.5px;color:var(--eg-text-muted);line-height:1.55;max-width:64ch;}
+
+  /* so a etapa atual ganha superficie: e a unica que pede acao */
+  .etapa-painel{
+    margin-top:13px;border-radius:14px;padding:18px 20px;
+    background:linear-gradient(155deg,rgba(201,151,75,.075) 0%,rgba(255,255,255,.012) 100%);
+    border:1px solid var(--eg-border);
+    box-shadow:0 16px 40px -22px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  }
+  .etapa-painel p{margin:0 0 12px;font-size:12.5px;color:var(--eg-text-secondary);line-height:1.6;max-width:60ch;}
+  .etapa-painel p:last-child{margin-bottom:0;}
+  .etapa-painel .err-msg{margin-top:10px;}
+
+  .aula-item{
+    display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:start;
+    padding:10px 6px 10px 0;border-bottom:1px solid var(--eg-navy-line);border-radius:6px;
+    transition:background .25s var(--eg-ease),transform .25s var(--eg-ease);
+  }
+  .aula-item:last-of-type{border-bottom:none;}
+  .aula-item:hover{background:rgba(255,255,255,.03);transform:translateX(3px);}
+  .aula-n{font-family:var(--eg-mono);font-size:11.5px;color:var(--eg-text-muted);padding-top:2px;}
+  .aula-t{margin:0;font-size:13px;line-height:1.45;color:var(--eg-text-primary);}
+  .aula-m{margin:3px 0 0;font-size:11px;color:var(--eg-text-muted);}
+  .aula-acao{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;padding-top:3px;text-decoration:none;color:var(--eg-text-muted);}
+  .aula-acao.link{color:var(--eg-gold-300);}
+  .aula-item.ok .aula-t{color:var(--eg-text-muted);text-decoration:line-through;text-decoration-color:rgba(255,255,255,.2);}
+  .aula-item.ok .aula-n{color:var(--eg-text-muted);}
+  .aula-acao.ok{color:var(--eg-green);}
+
+  /* ---- as aulas obrigatorias, como cards com capa ----
+     Eram uma lista de texto dentro do painel da etapa. Como e a unica coisa
+     que o aluno novo PRECISA fazer, vira a coisa mais visivel da tela. */
+  .trilha-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-top:14px;}
+  .trilha-card{
+    display:block;position:relative;border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;
+    border:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(155deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+    transition:transform .35s var(--eg-ease),border-color .35s var(--eg-ease),box-shadow .35s var(--eg-ease);
+  }
+  a.trilha-card:hover{transform:translateY(-3px);border-color:var(--eg-border-strong);box-shadow:0 22px 44px -20px rgba(0,0,0,.85);}
+  .trilha-capa{aspect-ratio:16/9;position:relative;background:linear-gradient(135deg,#1c2f54 0%,#0e1a29 100%);background-size:cover;background-position:center;}
+  .trilha-capa .n{position:absolute;left:11px;top:9px;font-family:var(--eg-mono);font-size:10.5px;letter-spacing:.12em;color:var(--eg-gold-100);background:rgba(8,13,23,.72);padding:3px 8px;border-radius:6px;}
+  .trilha-capa .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .trilha-capa .play i{
+    width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#20160a;
+    background:linear-gradient(145deg,var(--eg-gold-300),var(--eg-gold-700));box-shadow:0 10px 24px -8px rgba(201,151,75,.75);
+    transition:transform .3s var(--eg-ease);
+  }
+  a.trilha-card:hover .play i{transform:scale(1.08);}
+  .trilha-corpo{padding:12px 13px 13px;}
+  .trilha-t{font-family:'Sora',sans-serif;font-size:12.5px;font-weight:600;line-height:1.35;margin:0 0 6px;}
+  .trilha-m{font-size:11px;color:var(--eg-text-muted);display:flex;justify-content:space-between;gap:8px;}
+  .trilha-m .acao{color:var(--eg-gold-300);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:10px;}
+  .trilha-card.feita{border-color:rgba(143,199,159,.35);}
+  .trilha-card.feita .trilha-capa::after{content:"";position:absolute;inset:0;background:rgba(8,13,23,.5);}
+  .trilha-card.feita .selo-ok{position:absolute;right:9px;top:9px;z-index:1;background:var(--eg-green);color:#0b1a12;font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.08em;}
+  .trilha-card.feita .play i{background:var(--eg-green);color:#0b1a12;box-shadow:none;}
+  .trilha-card.agora{border-color:var(--eg-gold-500);box-shadow:0 0 0 3px rgba(201,151,75,.14);}
+  .trilha-card.agora .trilha-m .acao{animation:softPulse 2.4s ease-in-out infinite;}
+
+  /* ---- mural de recados: acima da linha do tempo, com destaque ---- */
+  .mural{
+    margin:0 0 28px;padding:18px 20px;border-radius:16px;border:1px solid var(--eg-border);
+    background:linear-gradient(155deg,rgba(201,151,75,.10) 0%,rgba(255,255,255,.012) 100%);
+    box-shadow:0 16px 40px -22px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .mural-cab{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .mural-cab i{color:var(--eg-gold-300);font-size:14px;}
+  .mural-cab h3{font-family:'Sora',sans-serif;font-size:14px;font-weight:600;margin:0;}
+  .mural-cab .qtd{margin-left:auto;font-family:var(--eg-mono);font-size:10.5px;letter-spacing:.06em;color:var(--eg-text-muted);}
+  .mural-item{padding:12px 14px;border-radius:10px;background:rgba(8,13,23,.38);border:1px solid var(--eg-navy-line);margin-bottom:8px;}
+  .mural-item:last-child{margin-bottom:0;}
+  .mural-item b{font-size:13px;}
+  .mural-item p{margin:4px 0 0;font-size:12.5px;color:var(--eg-text-secondary);white-space:pre-wrap;line-height:1.55;}
+  .mural-item a{color:var(--eg-gold-300);font-size:12px;display:inline-block;margin-top:6px;margin-right:12px;}
+  .mural-quando{float:right;font-family:var(--eg-mono);font-size:10px;letter-spacing:.06em;color:var(--eg-text-muted);}
+
+  .mentores{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;}
+  .mentor-chip{display:flex;align-items:center;gap:9px;}
+  .mentor-chip .av{
+    width:34px;height:34px;border-radius:50%;background:linear-gradient(140deg,#24395a,#16253a);
+    display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;
+    font-size:11px;font-weight:600;color:var(--eg-gold-300);
+  }
+  .mentor-chip b{font-size:12.5px;font-weight:600;}
+
+  /* ===================== blocos de apoio ===================== */
+  .grid-2col{display:grid;grid-template-columns:1.05fr 1fr;gap:34px;align-items:start;}
+  .bloco-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--eg-navy-line);margin-bottom:4px;}
+  .bloco-head h3{font-family:'Sora',sans-serif;font-size:13.5px;font-weight:600;margin:0;}
+  .bloco-meta{font-family:var(--eg-mono);font-size:10.5px;letter-spacing:.06em;color:var(--eg-text-muted);}
+  .vazio{font-size:12.5px;color:var(--eg-text-muted);line-height:1.6;margin:12px 0 0;}
+
+  .curso-linha{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--eg-navy-line);}
+  .curso-linha:last-child{border-bottom:none;}
+  .curso-nome{font-size:12.5px;color:var(--eg-text-secondary);}
+  .curso-pct{font-family:var(--eg-mono);font-size:11.5px;color:var(--eg-text-muted);}
+  .curso-track{grid-column:1/-1;height:3px;border-radius:2px;background:rgba(255,255,255,.07);overflow:hidden;}
+  .curso-track i{display:block;height:100%;width:0;background:var(--eg-gold-500);opacity:.85;transition:width .9s var(--eg-ease);}
+
+  @media(max-width:860px){ .grid-2col{grid-template-columns:1fr;gap:26px;} }
+
+
+  .section-title{font-size:11px;letter-spacing:2.5px;color:var(--eg-gold-300);font-weight:700;margin:0 0 14px;display:flex;align-items:center;gap:9px;}
+  .section-title::after{content:"";flex:1;height:1px;background:var(--eg-navy-line);margin-left:4px;}
+
+  .grid{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:start;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+  /* Vidro em vez de bloco chapado: gradiente sutil, um fio de luz na borda de
+     cima e sombra longa por baixo. E o que da profundidade sem colorir nada. */
+  .card2{
+    background:linear-gradient(155deg,rgba(255,255,255,.045) 0%,rgba(255,255,255,.012) 100%);
+    border:1px solid rgba(255,255,255,.075);border-radius:16px;padding:22px 24px;margin-bottom:20px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 16px 44px -20px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.07);
+    animation:fadeSlideUp 0.55s ease both;animation-delay:0.15s;
+    transition:transform .4s var(--eg-ease), box-shadow .4s var(--eg-ease), border-color .4s var(--eg-ease);
+  }
+  .card2:hover{
+    transform:translateY(-3px);border-color:var(--eg-border-strong);
+    box-shadow:0 30px 60px -22px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.13);
+  }
+  .side-col .card2{animation-delay:0.22s;}
+  .mat-cat-tabs{display:flex;flex-wrap:wrap;gap:8px;}
+  .mat-cat-tab{font-size:11.5px;font-weight:700;padding:6px 13px;border-radius:99px;border:1px solid var(--eg-navy-line);background:var(--eg-bg-2);color:var(--eg-text-muted);cursor:pointer;}
+  .mat-cat-tab{transition:transform .25s var(--eg-ease), border-color .25s var(--eg-ease), color .25s var(--eg-ease);}
+  .mat-cat-tab:hover{transform:translateY(-1px);border-color:var(--eg-border);color:var(--eg-text-secondary);}
+  .mat-cat-tab.active{background:linear-gradient(140deg,var(--eg-gold-300),var(--eg-gold-700));color:#221708;border-color:transparent;}
+  .mat-table-wrap{overflow-x:auto;}
+  .mat-table-wrap table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .mat-table-wrap th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:0.3px;color:var(--eg-text-muted);padding:8px 10px;border-bottom:1px solid var(--eg-navy-line);}
+  .mat-table-wrap td{padding:10px;border-bottom:1px solid var(--eg-navy-line);vertical-align:middle;}
+  .mat-new-badge{font-size:9.5px;font-weight:700;background:var(--eg-gold-500);color:#221708;padding:2px 7px;border-radius:99px;margin-left:6px;}
+  .mat-open-btn{font-size:11px;font-weight:700;color:var(--eg-gold-300);text-decoration:none;white-space:nowrap;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
+  .card-head h3{margin:0;font-size:14.5px;font-weight:700;color:var(--eg-text-primary);}
+  .card-head .icn{color:var(--eg-gold-300);font-size:14px;margin-right:8px;}
+
+  /* O campo de data nativo entrega o visual: fundo branco, fonte do sistema,
+     seta do calendario escura sobre o navy. */
+  input[type="datetime-local"],input[type="date"]{
+    background:var(--eg-bg-2);color:var(--eg-text-primary);
+    border:1px solid var(--eg-navy-line);border-radius:8px;
+    padding:10px 12px;font-family:var(--eg-mono);font-size:13px;
+    transition:border-color 0.25s var(--eg-ease);
+  }
+  input[type="datetime-local"]:hover,input[type="date"]:hover{border-color:var(--eg-border);}
+  input[type="datetime-local"]:focus,input[type="date"]:focus{outline:none;border-color:var(--eg-gold-500);}
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:0.55;cursor:pointer;}
+
+  /* ===================== movimento ===================== */
+  /* Brilho ambiente por tras do conteudo. Cada pagina tem seu par de cores e a
+     troca e lenta: da sensacao de mudar de ambiente sem a marca mudar. */
+  .main-content{position:relative;}
+  .main-content::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(820px 460px at 76% -6%, rgba(var(--amb-a,201,151,75),0.15), transparent 62%),
+      radial-gradient(640px 420px at 4% 100%, rgba(var(--amb-b,120,150,200),0.10), transparent 60%);
+    transition:background 900ms var(--eg-ease);
+  }
+  .main-content > *{position:relative;z-index:1;}
+
+  /* Ao trocar de pagina o conteudo entra escalonado, bloco a bloco. O reinicio
+     e automatico: .page-view alterna display, o que reinicia a animacao. */
+  @keyframes egRise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+  .page-view.active > *{animation:egRise 0.5s var(--eg-ease) both;}
+  .page-view.active > *:nth-child(1){animation-delay:0ms;}
+  .page-view.active > *:nth-child(2){animation-delay:60ms;}
+  .page-view.active > *:nth-child(3){animation-delay:120ms;}
+  .page-view.active > *:nth-child(4){animation-delay:180ms;}
+  .page-view.active > *:nth-child(5){animation-delay:240ms;}
+  .page-view.active > *:nth-child(n+6){animation-delay:300ms;}
+
+  /* As barras crescem do zero quando o dado chega */
+
+  /* Menu: empurra o texto e cresce a barra dourada */
+  .side-link{position:relative;transition:color 0.25s var(--eg-ease), padding-left 0.25s var(--eg-ease), background 0.25s var(--eg-ease);}
+  .side-link::before{
+    content:"";position:absolute;left:0;top:7px;bottom:7px;width:2px;background:var(--eg-gold-500);
+    transform:scaleY(0);transform-origin:top;transition:transform 0.3s var(--eg-ease);
+  }
+  .side-link:hover{padding-left:20px;}
+  .side-link:hover::before{transform:scaleY(0.5);}
+  .side-link.active::before{transform:scaleY(1);}
+
+  /* Botoes: levantam e recebem um brilho que atravessa */
+  .btn-primary,.cs-btn{position:relative;overflow:hidden;transition:transform 0.25s var(--eg-ease), box-shadow 0.25s var(--eg-ease);}
+  .btn-primary::after,.cs-btn::after{
+    content:"";position:absolute;top:0;left:-120%;width:60%;height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,0.5),transparent);
+    transition:left 0.55s var(--eg-ease);
+  }
+  .btn-primary:hover,.cs-btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(201,151,75,0.28);}
+  .btn-primary:hover::after,.cs-btn:hover::after{left:130%;}
+
+  /* Cartoes reagem ao passar o mouse */
+  .card2{transition:border-color 0.35s var(--eg-ease), transform 0.35s var(--eg-ease), box-shadow 0.35s var(--eg-ease);}
+  .card2:hover{border-color:var(--eg-border-strong);transform:translateY(-3px);box-shadow:0 14px 34px rgba(0,0,0,0.38);}
+
+  /* Codigo, versao e data de revisao com cara de registro clinico */
+  .mat-code,.mat-meta,.doc-code,.note-date{font-family:var(--eg-mono);}
+
+  /* Quem pediu menos movimento nao ve nenhum */
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none!important;transition-duration:0.01ms!important;}
+  }
+
+
+  .cal-item{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--eg-navy-line);align-items:center;}
+  .cal-item:last-child{border-bottom:none;padding-bottom:0;}
+  .cal-icn{width:40px;height:40px;border-radius:10px;background:var(--eg-bg-2);border:1px solid var(--eg-navy-line);display:flex;align-items:center;justify-content:center;color:var(--eg-gold-300);font-size:14px;flex-shrink:0;}
+  .cal-info{flex:1;min-width:0;}
+  .cal-info b{display:block;font-size:13px;font-weight:600;margin-top:1px;}
+  .cal-info span{font-size:11px;color:var(--eg-text-muted);}
+  .cat-badge{font-size:9.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;display:inline-block;letter-spacing:0.2px;margin-bottom:4px;background:rgba(201,151,75,0.16);color:var(--eg-gold-100);border:1px solid var(--eg-border-strong);}
+  .cat-badge.vendas{background:rgba(201,151,75,0.18);color:var(--eg-gold-100);border:1px solid var(--eg-border-strong);}
+  .cat-badge.geral{background:rgba(255,255,255,0.06);color:var(--eg-text-secondary);border:1px solid var(--eg-navy-line);}
+  .cat-badge.pro-hormonal{background:rgba(143,166,199,0.16);color:#9fb3d6;border:1px solid rgba(143,166,199,0.35);}
+  .cat-badge.encontros{background:rgba(143,199,159,0.12);color:#8fc79f;border:1px solid rgba(143,199,159,0.35);}
+  .cat-badge.black-belt{background:rgba(8,13,23,0.65);color:var(--eg-gold-300);border:1px solid var(--eg-gold-700);}
+  .cat-badge.masters{background:linear-gradient(90deg, rgba(242,223,174,0.2), rgba(201,151,75,0.2));color:var(--eg-gold-100);border:1px solid var(--eg-border-strong);}
+
+  .calw-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--eg-navy-line);align-items:center;}
+  .calw-item:last-child{border-bottom:none;padding-bottom:0;}
+  .calw-cover{width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--eg-navy-line);background:var(--eg-bg-2);}
+  .calw-icn{width:56px;height:56px;border-radius:10px;background:var(--eg-bg-2);border:1px solid var(--eg-navy-line);display:flex;align-items:center;justify-content:center;color:var(--eg-gold-300);font-size:18px;flex-shrink:0;}
+  .calw-info{flex:1;min-width:0;}
+  .calw-info b{display:block;font-size:13.5px;font-weight:600;margin-top:1px;}
+  .calw-info span{font-size:11.5px;color:var(--eg-text-muted);}
+  .calw-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-left:auto;flex-shrink:0;}
+  .calw-live{font-size:9.5px;font-weight:700;color:var(--eg-gold-300);border:1px solid var(--eg-border-strong);padding:3px 8px;border-radius:99px;white-space:nowrap;}
+  .calw-watch-btn{width:32px;height:32px;border-radius:50%;background:var(--eg-bg-2);border:1px solid var(--eg-navy-line);color:var(--eg-gold-100);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:12px;}
+  .calw-watch-btn:hover{background:var(--eg-gold-500);color:#221708;border-color:transparent;}
+
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .book-card-inner{display:flex;gap:22px;align-items:center;}
+  /* O mockup vem recortado (PNG transparente), entao nao e um retangulo: a
+     sombra e um brilho por baixo, nao uma caixa. Flutua de leve e inclina no
+     hover, como um objeto na mesa. */
+  .book-mock{
+    position:relative;flex:0 0 220px;display:flex;align-items:center;justify-content:center;
+    padding:8px 0;perspective:900px;
+  }
+  .book-mock::before{
+    content:"";position:absolute;left:12%;right:12%;bottom:6px;height:22px;border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(201,151,75,.45), rgba(201,151,75,0) 70%);
+    filter:blur(8px);
+  }
+  .book-mock img{
+    width:100%;height:auto;display:block;position:relative;
+    filter:drop-shadow(0 24px 34px rgba(0,0,0,.65)) drop-shadow(0 0 28px rgba(201,151,75,.18));
+    transform:rotateY(-6deg);animation:livroFlutua 6s ease-in-out infinite;
+    transition:transform .5s var(--eg-ease);
+  }
+  .book-mock:hover img{transform:rotateY(0deg) translateY(-4px) scale(1.03);}
+  @keyframes livroFlutua{0%,100%{translate:0 0;}50%{translate:0 -6px;}}
+  @media (prefers-reduced-motion:reduce){ .book-mock img{animation:none;} }
+  /* Ate 860px o card fica estreito demais pra livro + texto lado a lado:
+     empilha, livro centralizado em cima, texto embaixo. */
+  @media (max-width:860px){
+    .book-card-inner{flex-direction:column;align-items:stretch;gap:10px;}
+    .book-mock{flex-basis:auto;width:min(100%,260px);margin:0 auto;}
+    .book-info{text-align:center;}
+    .book-info .btn-row{justify-content:center;}
+  }
+  .book-info .badge{display:inline-block;white-space:nowrap;}
+  .book-cover-placeholder{width:140px;height:190px;flex-shrink:0;border-radius:8px;background:linear-gradient(150deg,var(--eg-gold-700),var(--eg-gold-500));display:flex;align-items:center;justify-content:center;color:#221708;font-size:28px;box-shadow:0 16px 40px rgba(0,0,0,0.45);}
+  .book-info{flex:1;min-width:0;}
+  .book-info h3{margin:10px 0 4px;font-size:18px;font-weight:700;}
+  .book-authors{margin:0 0 12px;font-size:12px;color:var(--eg-gold-300);font-weight:600;}
+  .book-desc{margin:0 0 16px;font-size:12.5px;color:var(--eg-text-secondary);line-height:1.6;}
+  .book-price{font-size:11px;color:var(--eg-text-muted);}
+  /* ---------- galeria do Curso Endogin 3 ---------- */
+  .galeria{
+    position:fixed;inset:0;z-index:200;display:none;flex-direction:column;
+    background:rgba(6,10,18,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  }
+  .galeria.aberta{display:flex;animation:fadeSlideUp .35s var(--eg-ease) both;}
+  .galeria-cab{
+    display:flex;align-items:center;gap:14px;padding:18px 26px;flex-shrink:0;
+    border-bottom:1px solid rgba(201,151,75,.22);
+    background:linear-gradient(90deg, rgba(201,151,75,.10), transparent 60%);
+  }
+  .galeria-cab .eyebrow{font-family:var(--eg-mono);font-size:10px;letter-spacing:.18em;color:var(--eg-gold-300);text-transform:uppercase;}
+  .galeria-cab h3{font-family:'Sora',sans-serif;font-size:18px;font-weight:700;margin:2px 0 0;letter-spacing:-.01em;}
+  .galeria-cab .sub{font-size:12px;color:var(--eg-text-muted);margin:3px 0 0;}
+  .galeria-fechar{
+    margin-left:auto;width:42px;height:42px;border-radius:50%;flex:none;cursor:pointer;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--eg-text-primary);font-size:16px;
+    transition:background .25s var(--eg-ease),border-color .25s var(--eg-ease),transform .25s var(--eg-ease);
+  }
+  .galeria-fechar:hover{background:rgba(201,151,75,.18);border-color:var(--eg-gold-500);transform:rotate(90deg);}
+  .galeria-grade{
+    flex:1;overflow-y:auto;padding:22px 26px 34px;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;align-content:start;
+  }
+  .galeria-foto{
+    position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;cursor:zoom-in;
+    border:1px solid rgba(255,255,255,.08);background:var(--eg-bg-2) center/cover no-repeat;
+    transition:transform .4s var(--eg-ease),border-color .4s var(--eg-ease),box-shadow .4s var(--eg-ease);
+    animation:fadeSlideUp .5s var(--eg-ease) both;
+  }
+  .galeria-foto:hover{transform:translateY(-4px) scale(1.015);border-color:var(--eg-gold-500);box-shadow:0 26px 50px -20px rgba(0,0,0,.9), 0 0 0 3px rgba(201,151,75,.14);}
+  .galeria-foto::after{content:"";position:absolute;inset:0;background:linear-gradient(to top, rgba(6,10,18,.55), transparent 45%);opacity:.7;transition:opacity .3s;}
+  .galeria-foto:hover::after{opacity:1;}
+  .galeria-foto .n{position:absolute;left:12px;bottom:11px;z-index:1;font-family:var(--eg-mono);font-size:10px;letter-spacing:.14em;color:var(--eg-gold-100);}
+  .galeria-foto .lupa{
+    position:absolute;right:11px;bottom:9px;z-index:1;width:30px;height:30px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:#20160a;
+    background:linear-gradient(145deg,var(--eg-gold-300),var(--eg-gold-700));opacity:0;transform:translateY(6px);
+    transition:opacity .3s var(--eg-ease),transform .3s var(--eg-ease);
+  }
+  .galeria-foto:hover .lupa{opacity:1;transform:none;}
+
+  /* visualizador de uma foto */
+  .visor{position:fixed;inset:0;z-index:210;display:none;align-items:center;justify-content:center;background:rgba(4,7,13,.96);}
+  .visor.aberto{display:flex;}
+  .visor img{max-width:min(92vw,1100px);max-height:86vh;border-radius:12px;box-shadow:0 40px 90px -30px rgba(0,0,0,1);animation:fadeSlideUp .3s var(--eg-ease) both;}
+  .visor-btn{
+    position:absolute;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;cursor:pointer;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--eg-text-primary);font-size:16px;
+    transition:background .25s var(--eg-ease),border-color .25s var(--eg-ease);
+  }
+  .visor-btn:hover{background:rgba(201,151,75,.2);border-color:var(--eg-gold-500);}
+  .visor-btn.ant{left:22px;} .visor-btn.prox{right:22px;}
+  .visor-fechar{position:absolute;top:18px;right:22px;}
+  .visor-conta{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);font-family:var(--eg-mono);font-size:11px;letter-spacing:.14em;color:var(--eg-gold-300);}
+  @media (max-width:640px){
+    .galeria-cab{padding:14px 16px;}
+    .galeria-grade{padding:14px 14px 28px;grid-template-columns:repeat(2,1fr);gap:10px;}
+    .visor-btn{width:42px;height:42px;font-size:14px;}
+    .visor-btn.ant{left:8px;} .visor-btn.prox{right:8px;}
+    .visor img{max-width:96vw;max-height:78vh;}
+  }
+
+  .course-card{position:relative;overflow:hidden;padding:0;}
+  .course-card-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.28;}
+  .course-card-bg.placeholder{background:linear-gradient(135deg,var(--eg-navy-line),var(--eg-bg-2));}
+  .course-card-content{position:relative;padding:22px 24px;}
+  .course-card-content h3{margin:10px 0 10px;font-size:18px;font-weight:700;line-height:1.3;}
+  .course-card-content p{margin:0 0 16px;font-size:12.5px;color:var(--eg-text-secondary);line-height:1.6;}
+  .course-stats{display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+  .course-stats div{display:flex;flex-direction:column;}
+  .course-stats b{font-size:18px;font-weight:700;color:var(--eg-gold-100);}
+  .course-stats span{font-size:10.5px;color:var(--eg-text-muted);}
+  @media (max-width:600px){
+    .course-card-bg{display:none;}
+  }
+
+  .star-input{display:flex;gap:8px;font-size:22px;}
+  .star-input i{color:var(--eg-text-muted);cursor:pointer;transition:color .1s;}
+  .star-input i.active{color:var(--eg-gold-300);}
+  .fb-thanks{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;padding:26px 10px;color:var(--eg-text-secondary);}
+  .fb-thanks i{font-size:28px;color:var(--eg-gold-300);margin-bottom:2px;}
+
+  /* ---------- chatbot flutuante de aulas ---------- */
+  .aula-chat-fab{
+    position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;border:none;z-index:50;
+    background:linear-gradient(145deg,var(--eg-gold-300),var(--eg-gold-700));color:#241705;font-size:22px;cursor:pointer;
+    box-shadow:0 10px 28px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;
+  }
+  .aula-chat-panel{
+    position:fixed;bottom:92px;right:24px;width:340px;max-width:calc(100vw - 32px);height:460px;max-height:calc(100vh - 130px);
+    background:var(--eg-bg-1);border:1px solid var(--eg-border-strong);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,0.5);
+    display:none;flex-direction:column;overflow:hidden;z-index:50;
+  }
+  .aula-chat-panel.open{display:flex;}
+  .aula-chat-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--eg-navy-line);flex-shrink:0;}
+  .aula-chat-head b{display:block;font-size:13.5px;}
+  .aula-chat-head span{display:block;font-size:11px;color:var(--eg-text-muted);margin-top:1px;}
+  .aula-chat-close{background:none;border:none;color:var(--eg-text-muted);font-size:15px;cursor:pointer;}
+  .aula-chat-messages{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+  .chat-bubble{max-width:88%;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.45;}
+  .chat-bubble.chat-bot{align-self:flex-start;background:var(--eg-bg-2);border:1px solid var(--eg-navy-line);border-bottom-left-radius:3px;}
+  .chat-bubble.chat-user{align-self:flex-end;background:linear-gradient(90deg,var(--eg-gold-700),var(--eg-gold-500));color:#221708;font-weight:600;border-bottom-right-radius:3px;}
+  .chat-lessons{margin-top:8px;display:flex;flex-direction:column;gap:8px;}
+  .chat-lesson-card{background:var(--eg-bg-1);border:1px solid var(--eg-navy-line);border-radius:9px;padding:8px 10px;}
+  .chat-lesson-card b{display:block;font-size:12px;}
+  .chat-lesson-card span{display:block;font-size:10.5px;color:var(--eg-text-muted);margin-top:2px;}
+  .chat-lesson-card a{display:inline-block;margin-top:5px;font-size:11px;color:var(--eg-gold-300);text-decoration:none;}
+  .aula-chat-input-row{display:flex;gap:8px;padding:12px;border-top:1px solid var(--eg-navy-line);flex-shrink:0;}
+  .aula-chat-input-row input{flex:1;margin:0;}
+  .aula-chat-input-row button{width:38px;height:38px;flex-shrink:0;border:none;border-radius:9px;background:linear-gradient(90deg,var(--eg-gold-700),var(--eg-gold-500));color:#221708;cursor:pointer;font-size:13px;}
+  @media (max-width:480px){ .aula-chat-panel{right:16px;bottom:82px;} .aula-chat-fab{right:16px;bottom:16px;} }
+  .fb-thanks b{font-size:14px;color:var(--eg-text-primary);}
+  .fb-thanks span{font-size:12px;}
+  .nps-question{margin:0 0 14px;font-size:13px;color:var(--eg-text-secondary);line-height:1.6;}
+  .nps-scale-grid{display:grid;grid-template-columns:repeat(11,1fr);gap:5px;margin-bottom:6px;}
+  .nps-scale-grid button{aspect-ratio:1;border-radius:7px;border:1px solid var(--eg-navy-line);background:var(--eg-bg-2);color:var(--eg-text-secondary);font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;}
+  .nps-scale-grid button.active{background:linear-gradient(145deg,var(--eg-gold-300),var(--eg-gold-700));color:#221708;border-color:transparent;}
+
+  .empty-state{font-size:12.5px;color:var(--eg-text-muted);text-align:center;padding:18px 6px;line-height:1.6;}
+
+  @media (max-width:980px){
+    .page{flex-direction:column;}
+    .side-nav{position:relative;width:100%;height:auto;flex-direction:row;overflow-x:auto;padding:12px 16px;border-right:none;border-bottom:1px solid var(--eg-navy-line);}
+    .side-brand{display:none;}
+    .side-links{flex-direction:row;gap:6px;}
+    .side-link{white-space:nowrap;}
+    .side-cta{display:none;}
+  }
+  @media (max-width:760px){
+    .grid, .grid-2{grid-template-columns:1fr;}
+    .nps-scale-grid{grid-template-columns:repeat(6,1fr);}
+  }
+
+  /* ---- credito do desenvolvedor, presente nas quatro telas do sistema ---- */
+  .dev-credito{
+    display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 16px;
+    margin:34px auto 0;padding:20px 16px 26px;border-top:1px solid var(--eg-navy-line);
+    font-size:11px;color:var(--eg-text-muted);letter-spacing:.02em;
+  }
+  .dev-credito b{color:var(--eg-gold-100);font-weight:700;}
+  .dev-credito a{color:var(--eg-text-muted);text-decoration:none;transition:color .25s ease;}
+  .dev-credito .dev-mail:hover{color:var(--eg-gold-300);text-decoration:underline;}
+  .dev-zap{
+    display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
+    border:1px solid var(--eg-navy-line);background:rgba(255,255,255,.03);font-weight:600;
+    transition:border-color .25s ease, color .25s ease, transform .25s ease, background .25s ease;
+  }
+  .dev-zap svg{width:13px;height:13px;color:#8fc79f;flex:none;}
+  .dev-zap:hover{border-color:#8fc79f;color:#8fc79f;transform:translateY(-1px);background:rgba(143,199,159,.10);}
+
+  /* ======================= CELULAR ======================= */
+  /* O iOS amplia a pagina inteira quando o foco cai num campo com fonte menor
+     que 16px — e nao desfaz o zoom depois. E a causa mais comum de "quebrou no
+     celular" que nao tem nada a ver com layout. */
+  @media (max-width:760px){
+    select,textarea,
+    input[type=text],input[type=email],input[type=password],input[type=number],
+    input[type=date],input[type=datetime-local],input[type=tel],input[type=search],
+    input[type=time],input[type=url],input[type=month],
+    .search-input{font-size:16px;}
+  }
+
+  @media (max-width:640px){
+    .wrap{padding:0 16px 72px;}
+    .card2{padding:17px 16px;}
+    .who h1{font-size:clamp(25px,7.4vw,34px);}
+    .etapa{padding-left:36px;}
+    .etapa-painel{padding:15px 15px;}
+    .mat-table-wrap{-webkit-overflow-scrolling:touch;}
+    .mat-table-wrap table{font-size:12px;}
+    .grid-2col{gap:22px;}
+    .topbar{padding:16px 0 14px;margin-bottom:18px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== AUTH (login + onboarding) ===================== -->
+<div class="auth-wrap" id="authWrap">
+  <div class="card">
+    <div class="brand">
+      <div class="brand-mark"><img src="/assets/logo-endogin.png" alt="Endogin"></div>
+      <div class="brand-word"><span class="cs">PORTAL DO</span><span class="name">ALUNO ENDOGIN</span></div>
+    </div>
+
+    <!-- ============ LOGIN ============ -->
+    <div data-screen="login" class="active">
+      <div><label>E-mail</label><input type="email" id="loginEmail" placeholder="seuemail@exemplo.com"></div>
+      <div><label>Senha</label><input type="password" id="loginPassword" placeholder="••••••••"></div>
+      <div id="turnstileBox" style="margin:0 0 10px;"></div>
+      <button class="btn-primary" id="loginBtn" style="width:100%;">Entrar</button>
+      <div class="err-msg" id="loginErr"></div>
+      <p class="hint" style="margin-top:14px;">Recebeu um convite por e-mail? Use o link dele pra criar sua senha antes de entrar aqui.</p>
+    </div>
+
+    <!-- ============ ONBOARDING: NPS ============ -->
+    <div data-screen="obNps">
+      <div class="step-title">Bem-vindo(a) à Mentoria Endogin!</div>
+      <div class="step-sub">Antes de continuar, de 0 a 10, o quanto você recomendaria a Endogin pra um colega?</div>
+      <div class="nps-scale" id="npsScale"></div>
+      <div class="nps-labels"><span>Pouco provável</span><span>Super provável</span></div>
+      <button class="btn-primary" id="obNpsNextBtn" style="width:100%;" disabled>Continuar</button>
+    </div>
+
+    <!-- ============ ONBOARDING: FICHA DO MENTORADO ============ -->
+    <div data-screen="obPerfil">
+      <div class="step-title">Conta pra gente sobre você</div>
+      <div class="step-sub">São os dados que sua CS usa pra te acompanhar — e que a gente precisa pra encontros presenciais, brindes e materiais. Leva um minuto.</div>
+      <div class="form-2col">
+        <div style="grid-column:1/-1;"><label>Sua especialidade *</label>
+          <select id="obEspecialidade">
+            <option value="">Escolha…</option>
+            <option>Ginecologia</option><option>Nutrologia</option><option>Endocrinologia</option>
+            <option>Cirurgia Bariátrica</option><option>Clínica Geral</option>
+            <option>Emagrecimento e Metabolismo</option><option>Medicina do Esporte</option>
+            <option>Medicina de Família</option><option>Cardiologia</option><option>Dermatologia</option>
+            <option>Psiquiatria</option><option>Cirurgia</option><option>Ortopedia</option>
+            <option>Urologia</option><option>Pediatria</option><option>Mastologia</option>
+            <option>Neurologia</option><option>Nefrologia</option><option>Oncologia</option>
+            <option>Infectologia</option><option>Oftalmologia</option><option>Anestesiologia</option>
+            <option>Endoscopia</option>
+            <option value="__outra">Outra (escrever)</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1;display:none;" id="obEspecialidadeOutraWrap">
+          <label>Qual?</label><input type="text" id="obEspecialidadeOutra" placeholder="Ex: Reumatologia">
+        </div>
+        <div><label>Cidade *</label><input type="text" id="obCidade" placeholder="Ex: Vitória"></div>
+        <div><label>Estado *</label>
+          <select id="obUf"><option value="">UF</option>
+            <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option>
+            <option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option>
+            <option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option>
+            <option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
+            <option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option>
+            <option>SE</option><option>TO</option>
+          </select>
+        </div>
+        <div><label>CRM (opcional)</label><input type="text" id="obCrm" placeholder="Ex: 12345/ES"></div>
+        <div><label>Instagram (opcional)</label><input type="text" id="obInstagram" placeholder="@seuperfil"></div>
+        <div><label>Nº do calçado *</label><input type="text" id="obCalcado" placeholder="Ex: 39"></div>
+        <div><label>Tamanho da camiseta *</label>
+          <select id="obCamiseta"><option value="">Escolha…</option>
+            <option>PP</option><option>P</option><option>M</option><option>G</option><option>GG</option><option>XG</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1;"><label>Tamanho da jaqueta *</label>
+          <select id="obJaqueta"><option value="">Escolha…</option>
+            <option>PP</option><option>P</option><option>M</option><option>G</option><option>GG</option><option>XG</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1;"><label>Tem alguma restrição alimentar? *</label>
+          <select id="obRestricaoTem"><option value="">Escolha…</option><option value="nao">Não tenho</option><option value="sim">Sim, tenho</option></select>
+        </div>
+        <div style="grid-column:1/-1;display:none;" id="obRestricaoWrap">
+          <label>Qual?</label><input type="text" id="obRestricao" placeholder="Ex: intolerância a lactose, vegetariano…">
+        </div>
+        <div style="grid-column:1/-1;"><label>Alguma necessidade especial que devemos saber? (opcional)</label>
+          <input type="text" id="obNecessidade" placeholder="Acessibilidade, mobilidade, saúde… deixe em branco se não houver">
+        </div>
+      </div>
+      <button class="btn-primary" id="obPerfilBtn" style="width:100%;margin-top:6px;">Continuar</button>
+      <div class="err-msg" id="obPerfilErr"></div>
+    </div>
+
+    <!-- ============ ONBOARDING: FEEDBACK ============ -->
+    <div data-screen="obFeedback">
+      <div class="step-title">Sua opinião sincera</div>
+      <div class="step-sub">Três perguntas rápidas. Isso vai direto pra equipe e é o que faz a mentoria melhorar.</div>
+      <div><label>O que você está achando da mentoria até agora? *</label>
+        <textarea id="obFbMentoria" rows="3" placeholder="O que tem funcionado, o que poderia ser melhor…"></textarea></div>
+      <div style="margin-top:12px;"><label>E do atendimento da sua CS? *</label>
+        <textarea id="obFbCs" rows="3" placeholder="Ela respondeu rápido? Te ajudou no que precisava?"></textarea></div>
+      <div style="margin-top:12px;"><label>E desta plataforma? *</label>
+        <textarea id="obFbPlataforma" rows="3" placeholder="Achou fácil de usar? Faltou alguma coisa?"></textarea></div>
+      <button class="btn-primary" id="obFeedbackBtn" style="width:100%;margin-top:16px;">Continuar</button>
+      <div class="err-msg" id="obFeedbackErr"></div>
+    </div>
+
+    <!-- ============ ONBOARDING: FOTO + ANIVERSÁRIO ============ -->
+    <div data-screen="obPhoto">
+      <div class="step-title">Só mais um pouco</div>
+      <div class="step-sub">Sua foto e data de aniversário — usamos pra deixar seu perfil completo e pra não esquecer de te parabenizar.</div>
+      <label class="photo-drop" id="obPhotoDrop">
+        <span id="obPhotoPlaceholder"><i class="fa-solid fa-camera"></i></span>
+        <input type="file" accept="image/*" id="obPhotoInput">
+      </label>
+      <div><label>Data de nascimento</label><input type="date" id="obBirthDate"></div>
+      <button class="btn-primary" id="obFinishBtn" style="width:100%;">Concluir cadastro</button>
+      <div class="err-msg" id="obErr"></div>
+      <span class="logout-link" id="obSkipBtn">Adicionar depois</span>
+    </div>
+
+    <!-- ============ ONBOARDING: TESTE COMPORTAMENTAL (DISC) ============ -->
+    <div data-screen="obDisc">
+      <div class="step-title">Só mais uma etapa</div>
+      <div class="step-sub">12 blocos rápidos pra sua CS te conhecer melhor. Não existe resposta certa ou errada — responda pelo instinto.</div>
+      <div class="disc-prog-row"><span id="discProgLabel">Bloco 1 de 12</span><span id="discProgPct">0%</span></div>
+      <div class="disc-bar-track"><div class="disc-bar-fill" id="discProgFill"></div></div>
+      <p class="hint" style="margin:0 0 14px;">Marque a palavra que <b>mais</b> combina com você e a que <b>menos</b> combina, em cada bloco.</p>
+      <div id="discWordBlock"></div>
+      <div class="err-msg" id="discErr"></div>
+      <div class="disc-nav-row">
+        <button class="btn-secondary" id="discBackBtn">Voltar</button>
+        <button class="btn-primary" id="discNextBtn">Próximo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL (dashboard real, conectado) ===================== -->
+<div class="page" id="appShell" style="display:none;">
+
+  <nav class="side-nav">
+    <div class="side-brand">
+      <div class="brand-mark"><img src="/assets/logo-endogin.png" alt="Endogin"></div>
+      <div class="brand-word"><span class="cs">MENTORIA</span><span class="name">ENDOGIN</span></div>
+    </div>
+    <div class="side-links">
+      <button class="side-link active" data-page="jornada"><i class="fa-solid fa-route"></i>Jornada</button>
+      <button class="side-link" data-page="calendario"><i class="fa-regular fa-calendar-days"></i>Calendário</button>
+      <button class="side-link" data-page="conteudos"><i class="fa-solid fa-book"></i>Conteúdos</button>
+      <button class="side-link" data-page="materiais"><i class="fa-solid fa-folder-open"></i>Protocolos e materiais</button>
+      <button class="side-link" data-page="opiniao"><i class="fa-regular fa-comment-dots"></i>Feedback &amp; NPS</button>
+    </div>
+    <div class="side-cta">
+      <div class="side-cta-card">
+        <b>Precisa de ajuda?</b>
+        <span id="sideCsName">Fale com sua CS</span>
+        <a class="cs-btn" id="sideWhatsBtn" href="#" target="_blank" rel="noopener" style="display:none;"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div class="wrap">
+
+      <div class="topbar">
+        <div class="topbar-left"></div>
+        <div class="topbar-right">
+          <div class="student-av" id="studentAvatar"></div>
+          <span class="logout-link" id="logoutBtn" style="margin:0;">Sair</span>
+        </div>
+      </div>
+
+      <!-- ================= PÁGINA: JORNADA ================= -->
+      <div class="page-view active" id="page-jornada">
+        <div class="who">
+          <div class="who-eyebrow" id="heroEyebrow">SUA JORNADA NA MENTORIA</div>
+          <h1 id="heroTitle">Olá!</h1>
+          <ul class="facts">
+            <li><b id="statBranches">—</b></li>
+            <li>status <b id="statStatus">—</b></li>
+          </ul>
+        </div>
+        <p class="who-sub" id="heroSub"></p>
+
+        <div class="percurso">
+          <div class="percurso-top">
+            <span class="percurso-etapas" id="percursoEtapas">—</span>
+            <span class="percurso-nota" id="percursoNota"></span>
+          </div>
+          <div class="percurso-track"><i id="percursoFill"></i></div>
+        </div>
+
+        <div class="mural" id="mural" style="display:none;">
+          <div class="mural-cab"><i class="fa-solid fa-bullhorn"></i><h3>Recados da mentoria</h3><span class="qtd" id="muralQtd"></span></div>
+          <div id="recadosList"></div>
+        </div>
+
+        <ol class="linha" id="linhaTempo"></ol>
+
+        <section>
+          <div class="bloco-head"><h3>Seus cursos</h3><span class="bloco-meta">Cademí</span></div>
+          <div id="courseProgressList"><p class="vazio">Assim que você começar a assistir as aulas gravadas, o seu progresso em cada curso aparece aqui.</p></div>
+        </section>
+      </div>
+
+      <!-- ================= PÁGINA: CALENDÁRIO ================= -->
+      <div class="page-view" id="page-calendario">
+        <div class="section-title"><i class="fa-regular fa-calendar-days"></i>CALENDÁRIO DA SEMANA</div>
+        <div class="card2">
+          <div id="calendarList"><div class="empty-state">Sua CS ainda não cadastrou aulas ou encontros pra sua mentoria.</div></div>
+        </div>
+      </div>
+
+      <!-- ================= PÁGINA: CONTEÚDOS ================= -->
+      <div class="page-view" id="page-conteudos">
+        <div class="section-title"><i class="fa-solid fa-layer-group"></i>CONTEÚDOS E OFERTAS</div>
+        <div class="grid-2">
+          <div class="card2" style="margin-bottom:0;">
+            <div class="book-card-inner">
+              <div class="book-mock"><img src="/assets/livro-codigo-endogin.png" alt="O Código Endogin — livro dos fundadores" loading="lazy"></div>
+              <div class="book-info">
+                <span class="badge gold">Lançamento dos fundadores</span>
+                <h3>O Código Endogin</h3>
+                <p class="book-authors">Dr. Caio Saraiva &amp; Dr. Vinícius Carruego</p>
+                <p class="book-desc">57 histórias da maior mentoria do Brasil, que ensinam o médico a construir riqueza e a ter tempo livre sem corromper a alma.</p>
+                <div class="btn-row">
+                  <button class="btn-primary">Quero meu exemplar</button>
+                </div>
+                <p class="book-price" style="margin-top:10px;">Capa dura · edição limitada</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card2 course-card" style="margin-bottom:0;">
+            <div class="course-card-bg" style="background-image:url('/assets/curso3/foto-07.jpg');background-position:center 30%;"></div>
+            <div class="course-card-content">
+              <span class="badge gold">Curso Endogin 3 · como foi</span>
+              <h3>750+ médicos no Curso Endogin 3</h3>
+              <p>Três dias em Alphaville-SP com o Dr. Caio e o Dr. Vinícius: Método Endogin de Emagrecimento, TRH por todas as vias, pellets e progestinas, com casos clínicos reais.</p>
+              <div class="course-stats">
+                <div><b>750+</b><span>médicos presentes</span></div>
+                <div><b>3</b><span>dias de imersão</span></div>
+                <div><b>12h+</b><span>conteúdo prático</span></div>
+              </div>
+              <div class="btn-row">
+                <button class="btn-primary">Garantir vaga no Curso 4</button>
+                <button class="btn-secondary" id="verComoFoiBtn"><i class="fa-regular fa-images"></i> Ver como foi</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PÁGINA: PROTOCOLOS E MATERIAIS ================= -->
+      <div class="page-view" id="page-materiais">
+        <div class="section-title"><i class="fa-solid fa-folder-open"></i>PROTOCOLOS E MATERIAIS</div>
+        <p class="hint" style="margin:-6px 0 16px;">Biblioteca versionada. Só a versão vigente aparece como material recomendado.</p>
+        <div class="card2">
+          <input type="text" class="search-input" id="matStuSearch" placeholder="Buscar por título ou código..." style="max-width:320px;margin-bottom:12px;">
+          <div class="mat-cat-tabs" id="matStuCatTabs"></div>
+          <div id="matStuList" style="margin-top:14px;"></div>
+          <p class="hint" style="margin-top:16px;"><i class="fa-solid fa-circle-info"></i> Conteúdo educacional. Este material tem finalidade de educação médica continuada e não substitui o julgamento clínico individual, a avaliação do paciente, as diretrizes vigentes ou a responsabilidade profissional do médico assistente.</p>
+        </div>
+      </div>
+
+      <!-- ================= PÁGINA: FEEDBACK & NPS ================= -->
+      <div class="page-view" id="page-opiniao">
+        <div class="section-title"><i class="fa-regular fa-comment-dots"></i>SUA OPINIÃO</div>
+        <div class="grid-2">
+          <div class="card2" id="feedbackCard">
+            <div class="card-head"><h3>Deixar feedback</h3></div>
+            <div id="feedbackFormWrap">
+              <label>O que você quer avaliar?</label>
+              <select id="fbCategory">
+                <option>Conteúdo das aulas</option>
+                <option>Onboarding</option>
+                <option>Suporte da CS</option>
+                <option>Sessão 1x1</option>
+                <option>Outro</option>
+              </select>
+              <label>Sua nota</label>
+              <div class="star-input" id="fbStars">
+                <i class="fa-regular fa-star" data-v="1"></i>
+                <i class="fa-regular fa-star" data-v="2"></i>
+                <i class="fa-regular fa-star" data-v="3"></i>
+                <i class="fa-regular fa-star" data-v="4"></i>
+                <i class="fa-regular fa-star" data-v="5"></i>
+              </div>
+              <label style="margin-top:14px;">Comentário (opcional)</label>
+              <textarea id="fbComment" rows="3" placeholder="Conte pra gente o que achou..."></textarea>
+              <button class="btn-primary" id="fbSubmit" disabled>Enviar feedback</button>
+              <div class="err-msg" id="fbErr"></div>
+            </div>
+            <div id="feedbackThanks" class="fb-thanks" style="display:none;">
+              <i class="fa-solid fa-circle-check"></i>
+              <b>Feedback enviado!</b>
+              <span>Sua CS já pode ver sua avaliação.</span>
+            </div>
+          </div>
+
+          <div class="card2" id="npsCard">
+            <div class="card-head"><h3>Pesquisa NPS</h3></div>
+            <div id="npsFormWrap">
+              <p class="nps-question">De 0 a 10, o quanto você recomendaria a Mentoria Endogin para um colega médico?</p>
+              <div class="nps-scale-grid" id="npsScaleGrid"></div>
+              <div class="nps-labels"><span>Pouco provável</span><span>Muito provável</span></div>
+              <textarea id="npsComment" rows="2" placeholder="Quer contar o motivo da nota? (opcional)" style="margin-top:14px;"></textarea>
+              <button class="btn-primary" id="npsSubmit" disabled>Enviar nota</button>
+              <div class="err-msg" id="npsErr"></div>
+            </div>
+            <div id="npsThanks" class="fb-thanks" style="display:none;">
+              <i class="fa-solid fa-circle-check"></i>
+              <b>Obrigado pela nota!</b>
+              <span>Isso ajuda a Endogin a melhorar sua jornada.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-credito">
+        <span>Desenvolvido por <b>Luiz Jandoza</b></span>
+        <a class="dev-mail" href="mailto:luizjandoza6@gmail.com">luizjandoza6@gmail.com</a>
+        <a class="dev-zap" href="https://wa.me/5515991236697" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.23 8.23 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.23-8.24 8.23z"/><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.09 3.2 5.07 4.49.71.31 1.26.49 1.69.63.71.23 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z"/></svg><span>(15) 99123-6697</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CHATBOT: assistente de aulas ===================== -->
+  <button class="aula-chat-fab" id="aulaChatToggle"><i class="fa-solid fa-comment-dots"></i></button>
+  <div class="aula-chat-panel" id="aulaChatPanel">
+    <div class="aula-chat-head">
+      <div><b>Assistente de aulas</b><span>Me diz o que você procura</span></div>
+      <button class="aula-chat-close" id="aulaChatClose"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="aula-chat-messages" id="aulaChatMessages"></div>
+    <div class="aula-chat-input-row">
+      <input type="text" id="aulaChatInput" placeholder="Ex: aula sobre emagrecimento...">
+      <button id="aulaChatSend"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== GALERIA: Curso Endogin 3 ===================== -->
+<div class="galeria" id="galeriaCurso3" role="dialog" aria-label="Fotos do Curso Endogin 3">
+  <div class="galeria-cab">
+    <div>
+      <div class="eyebrow">Curso Endogin 3 · Alphaville-SP</div>
+      <h3>Como foi</h3>
+      <p class="sub">Três dias, 750+ médicos, Dr. Caio e Dr. Vinícius no palco. Clique numa foto para ampliar.</p>
+    </div>
+    <button class="galeria-fechar" id="galeriaFechar" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="galeria-grade" id="galeriaGrade"></div>
+</div>
+<div class="visor" id="galeriaVisor">
+  <button class="visor-btn ant" id="visorAnt" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button>
+  <img id="visorImg" alt="">
+  <button class="visor-btn prox" id="visorProx" aria-label="Próxima"><i class="fa-solid fa-chevron-right"></i></button>
+  <button class="visor-btn visor-fechar" id="visorFechar" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+  <div class="visor-conta" id="visorConta"></div>
+</div>
+
+<script>
+  // Chave pública (publishable) — nunca a secret key aqui.
+  var SUPABASE_URL = "https://pguyeowngwrolrrqbopw.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_6dfrX0H6V43eI6WjnKR4Yg_VcgsyXBc";
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function $(id){ return document.getElementById(id); }
+  var currentStudent = null;
+  var obNpsScore = null;
+  var obPhotoData = null;
+
+  function showScreen(name){
+    $("appShell").style.display = "none";
+    $("authWrap").style.display = "flex";
+    document.querySelectorAll("[data-screen]").forEach(function(el){ el.classList.remove("active"); });
+    document.querySelector('[data-screen="' + name + '"]').classList.add("active");
+  }
+
+  // ---------------- login ----------------
+
+  // ---------- Cloudflare Turnstile (anti-robô no login) ----------
+  // Sem chave configurada o widget nem aparece e o login segue normal.
+  // Com chave: o token vai junto no signIn e o Supabase confere.
+  var TURNSTILE_SITE_KEY = "";
+  var turnstileWidget = null;
+  function turnstileMonta(){
+    if(!TURNSTILE_SITE_KEY || turnstileWidget !== null || typeof turnstile === "undefined") return;
+    var alvo = document.getElementById("turnstileBox"); if(!alvo) return;
+    turnstileWidget = turnstile.render(alvo, { sitekey: TURNSTILE_SITE_KEY, theme: "dark", appearance: "interaction-only", language: "pt-BR" });
+  }
+  function turnstileToken(){
+    if(!TURNSTILE_SITE_KEY) return undefined;
+    if(turnstileWidget === null) turnstileMonta();
+    try { return turnstile.getResponse(turnstileWidget) || undefined; } catch(e){ return undefined; }
+  }
+  function turnstileReset(){ if(turnstileWidget !== null){ try { turnstile.reset(turnstileWidget); } catch(e){} } }
+  window.addEventListener("load", function(){ setTimeout(turnstileMonta, 300); });
+
+  $("loginBtn").addEventListener("click", doLogin);
+  $("loginPassword").addEventListener("keydown", function(e){ if(e.key === "Enter") doLogin(); });
+
+  function doLogin(){
+    var email = $("loginEmail").value.trim();
+    var password = $("loginPassword").value;
+    $("loginErr").textContent = "";
+    if(!email || !password){ $("loginErr").textContent = "Preencha e-mail e senha."; return; }
+    $("loginBtn").disabled = true;
+    var token = turnstileToken();
+    if(TURNSTILE_SITE_KEY && !token){ $("loginBtn").disabled = false; $("loginErr").textContent = "Aguarde um instante a verificação de segurança e tente de novo."; return; }
+    sb.auth.signInWithPassword({ email: email, password: password, options: { captchaToken: token } }).then(function(res){
+      $("loginBtn").disabled = false;
+      turnstileReset();
+      if(res.error){ $("loginErr").textContent = /captcha/i.test(res.error.message) ? "A verificação de segurança falhou. Recarregue a página e tente de novo." : "Login inválido. Confira e-mail/senha."; return; }
+      boot();
+    });
+  }
+
+  sb.auth.getSession().then(function(res){ if(res.data && res.data.session){ boot(); } });
+
+  function boot(){
+    sb.auth.getSession().then(function(res){
+      var session = res.data.session;
+      if(!session) return;
+      sb.from("students")
+        .select("*, deliveries(id,label,status,branch_id), staff:cs_id(full_name,phone,photo_url)")
+        .eq("auth_user_id", session.user.id)
+        .single()
+        .then(function(r){
+          if(r.error || !r.data){
+            $("loginErr").textContent = "Login ok, mas não achei seu cadastro. Fale com a equipe Endogin.";
+            sb.auth.signOut();
+            return;
+          }
+          currentStudent = r.data;
+          // Registra o acesso: a CS ve na ficha quando o aluno entrou pela
+          // primeira vez e quando foi a ultima. Nao bloqueia nada se falhar.
+          var agora = new Date().toISOString();
+          sb.from("students")
+            .update({ last_login_at: agora, first_login_at: currentStudent.first_login_at || agora })
+            .eq("id", currentStudent.id)
+            .then(function(){});
+          if(!currentStudent.onboarding_completed_at){
+            startOnboarding();
+          } else if(!currentStudent.disc_completed_at){
+            startDiscOnly();
+          } else {
+            showDashboard();
+          }
+        });
+    });
+  }
+
+  function initials(name){
+    var parts = (name || "").trim().split(/\s+/);
+    return ((parts[0]||"")[0]||"") + ((parts[1]||"")[0]||"");
+  }
+
+  function waLink(phone){
+    if(!phone) return null;
+    var digits = phone.replace(/\D/g, "");
+    if(!digits) return null;
+    if(digits.length <= 11) digits = "55" + digits; // assume BR se não tiver DDI
+    return "https://wa.me/" + digits;
+  }
+
+  // ---------------- onboarding: NPS ----------------
+  function startOnboarding(){
+    var scale = $("npsScale");
+    scale.innerHTML = "";
+    for(var i = 0; i <= 10; i++){
+      (function(i){
+        var btn = document.createElement("button");
+        btn.className = "nps-btn"; btn.type = "button"; btn.textContent = i;
+        btn.addEventListener("click", function(){
+          obNpsScore = i;
+          scale.querySelectorAll(".nps-btn").forEach(function(b){ b.classList.remove("selected"); });
+          btn.classList.add("selected");
+          $("obNpsNextBtn").disabled = false;
+        });
+        scale.appendChild(btn);
+      })(i);
+    }
+    showScreen("obNps");
+  }
+
+  $("obNpsNextBtn").addEventListener("click", function(){
+    showScreen("obPerfil");
+  });
+
+  // ---------------- ficha do mentorado (primeiro acesso) ----------------
+  // Os dados que a CS precisa e que antes ela caçava um a um por WhatsApp:
+  // especialidade, de onde é, tamanhos (brinde/jaqueta do evento) e
+  // restrição alimentar. Obrigatório aqui, uma vez só na vida do aluno.
+  $("obEspecialidade").addEventListener("change", function(){
+    $("obEspecialidadeOutraWrap").style.display = this.value === "__outra" ? "block" : "none";
+  });
+  $("obRestricaoTem").addEventListener("change", function(){
+    $("obRestricaoWrap").style.display = this.value === "sim" ? "block" : "none";
+  });
+
+  var obPerfilDados = null;
+  $("obPerfilBtn").addEventListener("click", function(){
+    var err = $("obPerfilErr");
+    err.textContent = "";
+    var esp = $("obEspecialidade").value === "__outra" ? $("obEspecialidadeOutra").value.trim() : $("obEspecialidade").value;
+    var restricaoTem = $("obRestricaoTem").value;
+    var faltando = [];
+    if(!esp) faltando.push("especialidade");
+    if(!$("obCidade").value.trim()) faltando.push("cidade");
+    if(!$("obUf").value) faltando.push("estado");
+    if(!$("obCalcado").value.trim()) faltando.push("nº do calçado");
+    if(!$("obCamiseta").value) faltando.push("tamanho da camiseta");
+    if(!$("obJaqueta").value) faltando.push("tamanho da jaqueta");
+    if(!restricaoTem) faltando.push("restrição alimentar");
+    if(restricaoTem === "sim" && !$("obRestricao").value.trim()) faltando.push("qual é a restrição");
+    if(faltando.length){ err.textContent = "Falta preencher: " + faltando.join(", ") + "."; return; }
+
+    obPerfilDados = {
+      especialidade: esp,
+      cidade: $("obCidade").value.trim(),
+      uf: $("obUf").value,
+      cidade_uf: $("obCidade").value.trim() + "/" + $("obUf").value,
+      medical_license: $("obCrm").value.trim() || null,
+      instagram: $("obInstagram").value.trim() || null,
+      shoe_size: $("obCalcado").value.trim(),
+      shirt_size: $("obCamiseta").value,
+      jacket_size: $("obJaqueta").value,
+      dietary_restriction: restricaoTem === "sim" ? $("obRestricao").value.trim() : "Não tenho",
+      special_needs: $("obNecessidade").value.trim() || null,
+      perfil_completed_at: new Date().toISOString()
+    };
+    showScreen("obFeedback");
+  });
+
+  // ---------------- feedback do primeiro acesso ----------------
+  var obFeedbacks = null;
+  $("obFeedbackBtn").addEventListener("click", function(){
+    var err = $("obFeedbackErr");
+    err.textContent = "";
+    var m = $("obFbMentoria").value.trim(), c = $("obFbCs").value.trim(), pl = $("obFbPlataforma").value.trim();
+    if(m.length < 3 || c.length < 3 || pl.length < 3){
+      err.textContent = "Responda as três perguntas, mesmo que em poucas palavras.";
+      return;
+    }
+    obFeedbacks = [
+      { student_id: currentStudent.id, category: "mentoria",   comment: m, rating: obNpsScore === null ? 5 : Math.round(obNpsScore / 2), source: "primeiro_acesso" },
+      { student_id: currentStudent.id, category: "cs",         comment: c, rating: obNpsScore === null ? 5 : Math.round(obNpsScore / 2), source: "primeiro_acesso" },
+      { student_id: currentStudent.id, category: "plataforma", comment: pl, rating: obNpsScore === null ? 5 : Math.round(obNpsScore / 2), source: "primeiro_acesso" }
+    ];
+    showScreen("obPhoto");
+  });
+
+  $("obPhotoInput").addEventListener("change", function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    // A foto vai pro banco como data-URL. Do tamanho original (foto de
+    // celular tem 3-8 MB) o update passa do statement timeout do Postgres e
+    // o aluno trava no "Concluir cadastro". Aqui ela vira um quadrado de
+    // 480px em JPEG — uns 40 KB — antes de sair do navegador.
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var img = new Image();
+      img.onload = function(){
+        var LADO = 480, c = document.createElement("canvas");
+        c.width = LADO; c.height = LADO;
+        var lado = Math.min(img.width, img.height);
+        c.getContext("2d").drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, LADO, LADO);
+        obPhotoData = c.toDataURL("image/jpeg", 0.82);
+        $("obPhotoDrop").style.backgroundImage = "url(" + obPhotoData + ")";
+        $("obPhotoPlaceholder").style.display = "none";
+      };
+      img.onerror = function(){ $("obErr").textContent = "Não consegui ler essa imagem. Tente outra (JPG ou PNG)."; };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function finishOnboarding(skipRest){
+    $("obErr").textContent = "";
+    $("obFinishBtn").disabled = true; $("obFinishBtn").textContent = "Salvando…";
+    var updates = { onboarding_completed_at: new Date().toISOString() };
+    // a ficha preenchida nas telas anteriores vai junto
+    if(obPerfilDados) updates = Object.assign(updates, obPerfilDados);
+    if(!skipRest){
+      if(obPhotoData) updates.photo_url = obPhotoData;
+      var birth = $("obBirthDate").value;
+      if(birth) updates.birth_date = birth;
+    }
+    sb.from("students").update(updates).eq("id", currentStudent.id).then(function(r){
+      if(r.error){
+        $("obFinishBtn").disabled = false; $("obFinishBtn").textContent = "Concluir cadastro";
+        $("obErr").textContent = "Erro ao salvar: " + r.error.message;
+        return;
+      }
+      var tasks = [];
+      if(obNpsScore !== null){
+        tasks.push(sb.from("nps_responses").insert({ student_id: currentStudent.id, score: obNpsScore, source: "primeiro_acesso" }));
+      }
+      if(obFeedbacks) tasks.push(sb.from("feedback_entries").insert(obFeedbacks));
+      Promise.all(tasks).then(function(){
+        currentStudent = Object.assign({}, currentStudent, updates);
+        startDiscOnly();
+      });
+    });
+  }
+  $("obFinishBtn").addEventListener("click", function(){ finishOnboarding(false); });
+  $("obSkipBtn").addEventListener("click", function(){ finishOnboarding(true); });
+
+  // ---------------- onboarding: teste comportamental (DISC) ----------------
+  var discBlocks = [
+    [{w:"Decidido",d:"D"},{w:"Comunicativo",d:"I"},{w:"Paciente",d:"S"},{w:"Analítico",d:"C"}],
+    [{w:"Direto",d:"D"},{w:"Entusiasmado",d:"I"},{w:"Leal",d:"S"},{w:"Preciso",d:"C"}],
+    [{w:"Competitivo",d:"D"},{w:"Persuasivo",d:"I"},{w:"Calmo",d:"S"},{w:"Cuidadoso",d:"C"}],
+    [{w:"Determinado",d:"D"},{w:"Sociável",d:"I"},{w:"Confiável",d:"S"},{w:"Sistemático",d:"C"}],
+    [{w:"Assertivo",d:"D"},{w:"Otimista",d:"I"},{w:"Constante",d:"S"},{w:"Criterioso",d:"C"}],
+    [{w:"Ousado",d:"D"},{w:"Expressivo",d:"I"},{w:"Cooperativo",d:"S"},{w:"Meticuloso",d:"C"}],
+    [{w:"Enérgico",d:"D"},{w:"Carismático",d:"I"},{w:"Prestativo",d:"S"},{w:"Organizado",d:"C"}],
+    [{w:"Exigente",d:"D"},{w:"Espontâneo",d:"I"},{w:"Ponderado",d:"S"},{w:"Rigoroso",d:"C"}],
+    [{w:"Independente",d:"D"},{w:"Inspirador",d:"I"},{w:"Estável",d:"S"},{w:"Objetivo",d:"C"}],
+    [{w:"Pioneiro",d:"D"},{w:"Envolvente",d:"I"},{w:"Gentil",d:"S"},{w:"Cauteloso",d:"C"}],
+    [{w:"Corajoso",d:"D"},{w:"Extrovertido",d:"I"},{w:"Consistente",d:"S"},{w:"Detalhista",d:"C"}],
+    [{w:"Firme",d:"D"},{w:"Caloroso",d:"I"},{w:"Sereno",d:"S"},{w:"Metódico",d:"C"}]
+  ];
+  var discCurrent = 0;
+  var discAnswers = [];
+
+  function startDiscOnly(){
+    discCurrent = 0;
+    discAnswers = new Array(discBlocks.length).fill(null);
+    showScreen("obDisc");
+    renderDiscBlock();
+  }
+
+  function renderDiscBlock(){
+    $("discErr").textContent = "";
+    var block = discBlocks[discCurrent];
+    var saved = discAnswers[discCurrent] || { mais: null, menos: null };
+    var wrap = $("discWordBlock");
+    wrap.innerHTML = "";
+    block.forEach(function(item, idx){
+      var row = document.createElement("div");
+      row.className = "disc-word-row";
+      var maisActive = saved.mais === idx ? "active" : "";
+      var menosActive = saved.menos === idx ? "active" : "";
+      row.innerHTML =
+        '<span class="word">' + item.w + '</span>' +
+        '<div class="disc-pick-row">' +
+          '<button type="button" class="disc-pick-btn mais ' + maisActive + '" data-idx="' + idx + '" data-type="mais">MAIS EU</button>' +
+          '<button type="button" class="disc-pick-btn menos ' + menosActive + '" data-idx="' + idx + '" data-type="menos">MENOS EU</button>' +
+        '</div>';
+      wrap.appendChild(row);
+    });
+
+    wrap.querySelectorAll(".disc-pick-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var idx = parseInt(btn.getAttribute("data-idx"), 10);
+        var type = btn.getAttribute("data-type");
+        var a = discAnswers[discCurrent] || { mais: null, menos: null };
+        if(type === "mais"){
+          if(a.menos === idx) a.menos = null;
+          a.mais = (a.mais === idx) ? null : idx;
+        } else {
+          if(a.mais === idx) a.mais = null;
+          a.menos = (a.menos === idx) ? null : idx;
+        }
+        discAnswers[discCurrent] = a;
+        renderDiscBlock();
+      });
+    });
+
+    $("discProgLabel").textContent = "Bloco " + (discCurrent + 1) + " de " + discBlocks.length;
+    var pct = Math.round((discCurrent / discBlocks.length) * 100);
+    $("discProgPct").textContent = pct + "%";
+    $("discProgFill").style.width = pct + "%";
+    $("discBackBtn").style.visibility = discCurrent === 0 ? "hidden" : "visible";
+    $("discNextBtn").textContent = discCurrent === discBlocks.length - 1 ? "Concluir" : "Próximo";
+  }
+
+  $("discBackBtn").addEventListener("click", function(){
+    if(discCurrent > 0){ discCurrent -= 1; renderDiscBlock(); }
+  });
+
+  $("discNextBtn").addEventListener("click", function(){
+    var a = discAnswers[discCurrent];
+    if(!a || a.mais === null || a.menos === null){
+      $("discErr").textContent = "Marque uma opção como \"mais eu\" e outra como \"menos eu\" antes de continuar.";
+      return;
+    }
+    if(discCurrent < discBlocks.length - 1){
+      discCurrent += 1;
+      renderDiscBlock();
+    } else {
+      finishDisc();
+    }
+  });
+
+  function finishDisc(){
+    $("discErr").textContent = "";
+    $("discNextBtn").disabled = true;
+
+    var scores = { D:0, I:0, S:0, C:0 };
+    discBlocks.forEach(function(block, i){
+      var a = discAnswers[i];
+      scores[block[a.mais].d] += 1;
+      scores[block[a.menos].d] -= 1;
+    });
+    var primary = "D";
+    Object.keys(scores).forEach(function(k){ if(scores[k] > scores[primary]) primary = k; });
+
+    sb.from("disc_results").insert({
+      student_id: currentStudent.id,
+      d_score: scores.D, i_score: scores.I, s_score: scores.S, c_score: scores.C,
+      primary_profile: primary,
+      raw_answers: discAnswers
+    }).then(function(r){
+      if(r.error){
+        $("discNextBtn").disabled = false;
+        $("discErr").textContent = "Erro ao salvar: " + r.error.message;
+        return;
+      }
+      sb.from("students").update({ disc_completed_at: new Date().toISOString() }).eq("id", currentStudent.id).then(function(){
+        currentStudent.disc_completed_at = new Date().toISOString();
+        $("discNextBtn").disabled = false;
+        showDashboard();
+      });
+    });
+  }
+
+  // ---------------- dashboard (shell real) ----------------
+  function showDashboard(){
+    $("authWrap").style.display = "none";
+    $("appShell").style.display = "flex";
+
+    var av = $("studentAvatar");
+    if(currentStudent.photo_url){ av.style.backgroundImage = "url(" + currentStudent.photo_url + ")"; av.textContent = ""; }
+    else { av.textContent = initials(currentStudent.full_name).toUpperCase(); }
+
+    var mentorias = (currentStudent.deliveries || []).filter(function(d){ return d.status === "ativo"; });
+    var mentoriaLabels = mentorias.map(function(d){ return d.label; });
+    var branchIds = mentorias.map(function(d){ return d.branch_id; }).filter(Boolean);
+
+    var firstName = (currentStudent.full_name || "").trim().split(/\s+/)[0] || "";
+    // O nome sozinho: o "Olá!" ocupava a linha mais nobre da tela sem dizer
+    // nada que o aluno ja nao soubesse.
+    $("heroTitle").textContent = currentStudent.full_name || firstName;
+
+    $("statBranches").textContent = mentoriaLabels.length ? mentoriaLabels.join(", ") : "—";
+    $("statStatus").textContent = currentStudent.status || "—";
+
+    // A CS aparecia QUATRO vezes na mesma tela: barra do topo, linha de
+    // contexto, cartao da direita e rodape do menu — e a mentoria, tres. Era
+    // isso que dava o ar de tela improvisada, mais do que o estilo. Agora cada
+    // informacao tem um endereco so: a CS mora no rodape do menu, que
+    // acompanha o aluno nas cinco paginas.
+    var cs = currentStudent.staff;
+    if(cs){
+      $("sideCsName").textContent = "Fale com " + cs.full_name + ", sua CS";
+      var link = waLink(cs.phone);
+      if(link){ $("sideWhatsBtn").style.display = "flex"; $("sideWhatsBtn").href = link; }
+    } else {
+      $("sideCsName").textContent = "Sua CS ainda será definida";
+    }
+
+    currentBranchIds = branchIds;
+    currentMentoriaLabels = mentoriaLabels;
+
+    // antes só mostrava a trilha pra quem era da "Mentoria Mãe" E estava
+    // marcado como novo — isso escondia a trilha (e as 5 aulas obrigatórias
+    // universais) pra todo mundo de outra mentoria. A trilha em si já sabe
+    // se esconder sozinha quando não há nada pendente (ver applyJourneyState/
+    // loadLessons), então libera pra qualquer aluno.
+    refreshJourney();
+    loadCalendar(branchIds);
+    loadRecados();
+    loadAulaCatalog(branchIds);
+    loadMaterialsStudent();
+    loadCourseProgressStudent();
+
+    showPage("jornada");
+  }
+
+  // ---------------- sessão 1x1 ----------------
+  var SESSION_STATUS_LABEL = {
+    a_agendar:"A agendar", agendada:"Agendada", confirmada:"Confirmada",
+    realizada:"Realizada", remarcada:"Remarcada", cancelada:"Cancelada"
+  };
+  var latestSession = null;
+  var currentBranchIds = [];
+  var currentMentoriaLabels = [];
+
+  function loadSession(){
+    return sb.from("mentoring_sessions")
+      .select("*")
+      .eq("student_id", currentStudent.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(function(r){
+        var s = (r.data && r.data[0]) || null;
+        latestSession = (s && s.status !== "cancelada") ? s : null;
+        renderSessionCard();
+        return latestSession && latestSession.status === "realizada";
+      });
+  }
+
+  // A sessao nao desenha mais um cartao proprio: ela e uma etapa da linha do
+  // tempo, e quem monta a tela e renderLinha().
+  function renderSessionCard(){ renderLinha(); }
+
+  // O formulario e redesenhado a cada render da linha do tempo, entao o clique
+  // e capturado no container — um listener preso ao botao morreria no primeiro
+  // redesenho.
+  $("linhaTempo").addEventListener("click", function(ev){
+    var btn = ev.target.closest("#sessionRequestBtn");
+    if(!btn) return;
+    var val = $("sessionRequestInput").value;
+    $("sessionRequestErr").textContent = "";
+    if(!val){ $("sessionRequestErr").textContent = "Escolha uma data e horário."; return; }
+    btn.disabled = true;
+    var iso = new Date(val).toISOString();
+    var payload = { student_id: currentStudent.id, scheduled_at: iso, status: "a_agendar" };
+    var op = latestSession
+      ? sb.from("mentoring_sessions").update(payload).eq("id", latestSession.id)
+      : sb.from("mentoring_sessions").insert(payload);
+    op.then(function(r){
+      btn.disabled = false;
+      if(r.error){ $("sessionRequestErr").textContent = "Erro: " + r.error.message; return; }
+      refreshJourney();
+    });
+  });
+
+  // ---------------- aulas obrigatórias (trilha) ----------------
+  function loadLessons(branchIds){
+    // "trilha" com branch_id nulo = obrigatória pra QUALQUER aluno novo,
+    // independente da mentoria (ex: as aulas preparatórias antes do 1x1) —
+    // por isso o "or" com "branch_id.is.null", não só as da mentoria dele.
+    var orParts = ["branch_id.is.null"];
+    if(branchIds.length){ orParts.push("branch_id.in.(" + branchIds.join(",") + ")"); }
+    return sb.from("lessons")
+      .select("id,title,duration_minutes,lesson_type,branch_id,link_url,cover_url,description")
+      .eq("lesson_type", "trilha")
+      .or(orParts.join(","))
+      .order("sort_order", { nullsFirst:false })
+      .then(function(r){
+        var lessons = r.data || [];
+        if(!lessons.length){ jornada.trilha = { aulas: [], feitas: 0 }; return true; }
+        return sb.from("lesson_progress")
+          .select("lesson_id,completed")
+          .eq("student_id", currentStudent.id)
+          .then(function(pr){
+            var doneMap = {};
+            (pr.data || []).forEach(function(p){ doneMap[p.lesson_id] = p.completed; });
+            var doneCount = lessons.filter(function(l){ return doneMap[l.id]; }).length;
+            jornada.trilha = {
+              aulas: lessons.map(function(l){ return { titulo: l.title, minutos: l.duration_minutes, link: l.link_url, capa: l.cover_url, descricao: l.description, feita: !!doneMap[l.id] }; }),
+              feitas: doneCount
+            };
+            return doneCount === lessons.length;
+          });
+      });
+  }
+
+  // ---------------- suas trilhas (progresso real vindo da Cademí) ----------------
+  // O progresso nos cursos e justamente "o que ele ja fez" — antes o bloco
+  // inteiro sumia quando ainda nao havia numero, que e exatamente a hora em que
+  // o aluno mais precisa entender o que se espera dele. Agora ele fica, com uma
+  // frase no lugar do vazio.
+  function loadCourseProgressStudent(){
+    var wrap = $("courseProgressList");
+    if(!wrap) return;
+    return sb.from("course_progress")
+      .select("progress_percentage,course:course_id(name)")
+      .eq("student_id", currentStudent.id)
+      .order("progress_percentage", { ascending: false })
+      .then(function(r){
+        var rows = (r.data || []).filter(function(row){ return row.course; });
+        if(r.error || !rows.length){
+          wrap.innerHTML = '<p class="vazio">Assim que você começar a assistir as aulas gravadas, o seu progresso em cada curso aparece aqui.</p>';
+          return;
+        }
+        wrap.innerHTML = rows.map(function(row){
+          var pct = Math.max(0, Math.min(100, Math.round(Number(row.progress_percentage) || 0)));
+          return '<div class="curso-linha">' +
+            '<div class="curso-nome">' + row.course.name + '</div>' +
+            '<div class="curso-pct">' + pct + '%</div>' +
+            '<div class="curso-track"><i style="width:' + pct + '%;"></i></div>' +
+          '</div>';
+        }).join("");
+      });
+  }
+
+  // ---------------- percurso do aluno ----------------
+  // Quatro etapas concretas + o estado final. Nenhuma some depois de vencida:
+  // a etapa concluida vira um ponto preenchido com a data, e e assim que o
+  // aluno enxerga o caminho que ja andou.
+  var jornada = { trilha: null };
+
+  function esc(v){
+    return String(v == null ? "" : v).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+  function fmtDiaMes(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
+  }
+  function fmtQuandoLongo(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return "";
+    return d.toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function painelTrilha(){
+    var t = jornada.trilha;
+    if(!t || !t.aulas.length){
+      return '<div class="etapa-painel"><p>Sua CS ainda não liberou as aulas de introdução da sua mentoria. Assim que ela liberar, elas aparecem aqui.</p></div>';
+    }
+    // a proxima a assistir e a primeira ainda nao feita: ganha o destaque
+    var proxima = -1;
+    t.aulas.forEach(function(a, i){ if(proxima === -1 && !a.feita) proxima = i; });
+
+    return '<div class="etapa-painel">' +
+      '<p>Assista na ordem — cada aula usa a anterior. A última libera sua sessão com os fundadores. <b>' + t.feitas + ' de ' + t.aulas.length + '</b> feitas.</p>' +
+      '<div class="trilha-grid">' +
+      t.aulas.map(function(a, i){
+        var n = (i + 1 < 10 ? "0" : "") + (i + 1);
+        var classes = "trilha-card" + (a.feita ? " feita" : "") + (i === proxima ? " agora" : "");
+        var capa = a.capa ? ' style="background-image:url(' + esc(a.capa) + ');"' : '';
+        var tag = a.link ? "a" : "div";
+        var href = a.link ? ' href="' + esc(a.link) + '" target="_blank" rel="noopener"' : '';
+        var acao = a.feita ? "Concluída" : (i === proxima ? "Assistir agora" : "Assistir");
+        return '<' + tag + ' class="' + classes + '"' + href + '>' +
+          '<div class="trilha-capa"' + capa + '>' +
+            '<span class="n">AULA ' + n + '</span>' +
+            (a.feita ? '<span class="selo-ok">FEITA</span>' : '') +
+            '<span class="play"><i class="fa-solid ' + (a.feita ? "fa-check" : "fa-play") + '"></i></span>' +
+          '</div>' +
+          '<div class="trilha-corpo">' +
+            '<p class="trilha-t">' + esc(a.titulo) + '</p>' +
+            '<div class="trilha-m"><span>' + (a.minutos ? a.minutos + ' min' : '') + '</span>' +
+              (a.link ? '<span class="acao">' + acao + '</span>' : '') + '</div>' +
+          '</div>' +
+        '</' + tag + '>';
+      }).join("") +
+      '</div>' +
+    '</div>';
+  }
+
+  function painelSessao(){
+    var s = latestSession;
+    if(s && s.status !== "a_agendar"){
+      var mentores = (s.mentor_names || []).map(function(m){
+        return '<div class="mentor-chip"><span class="av">' + esc(initials(m).toUpperCase()) + '</span><b>' + esc(m) + '</b></div>';
+      }).join("");
+      return '<div class="etapa-painel">' +
+        (mentores ? '<div class="mentores">' + mentores + '</div>' : '') +
+        '<p>' + (s.scheduled_at ? esc(fmtQuandoLongo(s.scheduled_at)) : "Ainda sem data marcada.") + '</p>' +
+      '</div>';
+    }
+    if(s && s.status === "a_agendar" && s.scheduled_at){
+      return '<div class="etapa-painel"><p>Você pediu <b>' + esc(fmtQuandoLongo(s.scheduled_at)) + '</b>. Sua CS confirma em seguida — assim que confirmar, aparece aqui.</p></div>';
+    }
+    return '<div class="etapa-painel">' +
+      '<p>Escolha um horário para conversar com o Dr. Caio e o Dr. Vinícius. Sua CS confirma em seguida.</p>' +
+      '<input type="datetime-local" id="sessionRequestInput">' +
+      '<button class="btn-primary" id="sessionRequestBtn" style="margin-left:10px;">Solicitar horário</button>' +
+      '<div class="err-msg" id="sessionRequestErr"></div>' +
+    '</div>';
+  }
+
+  function montaEtapas(){
+    var s = latestSession;
+    var t = jornada.trilha;
+    var totalAulas = t ? t.aulas.length : 0;
+    var feitasAulas = t ? t.feitas : 0;
+    var trilhaOk = totalAulas > 0 && feitasAulas === totalAulas;
+    var sessaoOk = !!(s && s.status === "realizada");
+    // Veterano: ja esta na mentoria ha tempo, passou pela trilha e pelo 1x1
+    // fora do Portal. Essas duas etapas ficam dispensadas — boas-vindas e
+    // DISC continuam valendo pra todo mundo. Quem marca e a CS, na ficha.
+    var veterano = !!currentStudent.veterano;
+    if(veterano){ trilhaOk = true; sessaoOk = true; }
+
+    return [
+      {
+        nome: "Boas-vindas",
+        feita: !!currentStudent.onboarding_completed_at,
+        quando: currentStudent.onboarding_completed_at,
+        nota: "Seu cadastro conferido e o contato da sua CS liberado."
+      },
+      {
+        nome: "Seu perfil DISC",
+        feita: !!currentStudent.disc_completed_at,
+        quando: currentStudent.disc_completed_at,
+        nota: "O questionário que mostra pra sua CS como você prefere ser acompanhado."
+      },
+      {
+        nome: "Trilha de boas-vindas",
+        feita: trilhaOk,
+        rotulo: veterano ? "Dispensada" : null,
+        contador: totalAulas ? feitasAulas + " de " + totalAulas : null,
+        nota: veterano
+          ? "Você já está na mentoria há mais tempo — essa etapa não se aplica. As aulas seguem disponíveis em Conteúdos."
+          : "As aulas que preparam você para a conversa com os fundadores.",
+        painel: veterano ? null : painelTrilha
+      },
+      {
+        nome: "Sessão 1x1 com os fundadores",
+        feita: sessaoOk,
+        rotulo: veterano && !(s && s.status === "realizada") ? "Dispensada" : null,
+        quando: (s && s.status === "realizada") ? s.scheduled_at : null,
+        nota: veterano
+          ? "Você já passou por essa etapa antes do Portal."
+          : (trilhaOk
+              ? "Sua conversa individual com o Dr. Caio e o Dr. Vinícius."
+              : "Abre assim que você fechar a trilha de boas-vindas."),
+        painel: (trilhaOk && !veterano) ? painelSessao : null
+      },
+      {
+        nome: "Mentoria em andamento",
+        feita: false,
+        final: true,
+        nota: "Aulas ao vivo no Calendário, protocolos em Materiais e seus cursos gravados aqui embaixo."
+      }
+    ];
+  }
+
+  function renderLinha(){
+    var alvo = $("linhaTempo");
+    if(!alvo || !currentStudent) return;
+    var etapas = montaEtapas();
+    var atual = etapas.findIndex(function(e){ return !e.feita; });
+    if(atual === -1) atual = etapas.length - 1;
+
+    alvo.innerHTML = etapas.map(function(e, i){
+      var estado = e.feita ? "feita" : (i === atual ? "agora" : "depois");
+      var direita = e.feita
+        ? (e.rotulo || fmtDiaMes(e.quando) || "Concluída")
+        : (e.contador || "");
+      return '<li class="etapa ' + estado + '">' +
+        '<span class="ponto">' + (e.feita ? '<i class="fa-solid fa-check"></i>' : "") + '</span>' +
+        '<div class="etapa-linha">' +
+          '<p class="etapa-nome">' + esc(e.nome) + '</p>' +
+          (direita ? '<span class="etapa-quando">' + esc(direita) + '</span>' : '') +
+        '</div>' +
+        (e.nota ? '<p class="etapa-nota">' + esc(e.nota) + '</p>' : '') +
+        (estado === "agora" && e.painel ? e.painel() : "") +
+      '</li>';
+    }).join("");
+
+    // A barra conta so as quatro etapas concretas: "mentoria em andamento" e o
+    // estado final, nao um item a cumprir.
+    var concretas = etapas.slice(0, 4);
+    var feitas = concretas.filter(function(e){ return e.feita; }).length;
+    var pct = Math.round((feitas / concretas.length) * 100);
+    $("percursoEtapas").innerHTML = "<b>" + feitas + "</b> de " + concretas.length + " etapas concluídas";
+    $("percursoFill").style.width = pct + "%";
+
+    var tudoFeito = feitas === concretas.length;
+    $("percursoNota").textContent = tudoFeito
+      ? "Jornada inicial completa."
+      : "Falta: " + etapas[atual].nome.toLowerCase() + ".";
+    $("heroEyebrow").textContent = tudoFeito ? "MENTORIA ATIVA" : "SUA JORNADA NA MENTORIA";
+    $("heroSub").textContent = tudoFeito
+      ? "Você concluiu a jornada inicial. Daqui pra frente é acompanhar as aulas ao vivo e os conteúdos da sua mentoria."
+      : (currentMentoriaLabels.length
+          ? "Cada etapa abaixo fica registrada conforme você avança na " + currentMentoriaLabels.join(" / ") + "."
+          : "Assim que sua CS vincular você a uma mentoria, seu conteúdo aparece aqui.");
+  }
+
+  function refreshJourney(){
+    Promise.all([
+      loadSession(),
+      loadLessons(currentBranchIds),
+      loadCourseProgressStudent()
+    ]).then(renderLinha);
+  }
+
+  // ---------------- calendário (aulas semanais / eventos) ----------------
+  var WEEKDAY_LABEL = { segunda:"Segunda", terca:"Terça", quarta:"Quarta", quinta:"Quinta", sexta:"Sexta", sabado:"Sábado", domingo:"Domingo" };
+
+  function fmtEventDate(dateStr){
+    if(!dateStr) return "";
+    var parts = dateStr.split("-");
+    return parts.length === 3 ? (parts[2] + "/" + parts[1] + "/" + parts[0]) : dateStr;
+  }
+
+  var CATEGORY_SLUG = {
+    "Vendas": "vendas", "Geral": "geral", "Pro Hormonal": "pro-hormonal",
+    "Encontros": "encontros", "Endogin Black Belt": "black-belt", "Endogin Mentores Masters": "masters"
+  };
+  var WEEKDAY_ORDER = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+
+  function parseDateOnly(dateStr){
+    if(!dateStr) return null;
+    var p = dateStr.split("-");
+    if(p.length !== 3) return null;
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  }
+  function nextWeekdayOffset(weekday){
+    var idx = WEEKDAY_ORDER.indexOf(weekday);
+    if(idx < 0) return null;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    return (idx - today.getDay() + 7) % 7;
+  }
+  function relativeDayTag(offsetDays){
+    if(offsetDays === null || offsetDays === undefined) return "";
+    if(offsetDays === 0) return "HOJE";
+    if(offsetDays === 1) return "AMANHÃ";
+    return "EM " + offsetDays + " DIAS";
+  }
+
+  function loadCalendar(branchIds){
+    var orParts = ["branch_id.is.null"];
+    if(branchIds && branchIds.length){ orParts.push("branch_id.in.(" + branchIds.join(",") + ")"); }
+    sb.from("lessons")
+      .select("id,title,weekday,event_date,scheduled_time,duration_minutes,lesson_type,branch_id,category,cover_url,description,link_url")
+      .in("lesson_type", ["semanal", "evento"])
+      .or(orParts.join(","))
+      .then(function(r){
+        if(r.error || !r.data) return;
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        var items = r.data.map(function(l){
+          var offset;
+          if(l.lesson_type === "evento"){
+            var d = parseDateOnly(l.event_date);
+            offset = d ? Math.round((d.getTime() - today.getTime()) / 86400000) : null;
+          } else {
+            offset = nextWeekdayOffset(l.weekday);
+          }
+          return { l: l, offset: offset };
+        }).filter(function(x){ return x.offset === null || x.offset >= 0; });
+        items.sort(function(a, b){ return (a.offset === null ? 999 : a.offset) - (b.offset === null ? 999 : b.offset); });
+        if(!items.length){ $("calendarList").innerHTML = '<div class="empty-state">Sua CS ainda não cadastrou aulas ou encontros pra sua mentoria.</div>'; return; }
+        $("calendarList").innerHTML = items.map(function(x){
+          var l = x.l;
+          var timePart = l.scheduled_time ? l.scheduled_time.slice(0, 5).replace(":", "h") : null;
+          var dayLabel = l.lesson_type === "evento" ? fmtEventDate(l.event_date) : (WEEKDAY_LABEL[l.weekday] || l.weekday);
+          var when = [dayLabel, timePart].filter(Boolean).join(" · ") + (l.description ? " · " + l.description : "");
+          var catSlug = CATEGORY_SLUG[l.category] || "geral";
+          var catLabel = l.category ? ("Aula de " + l.category) : (l.lesson_type === "evento" ? "Encontro" : "Aula semanal");
+          var tag = relativeDayTag(x.offset);
+          return '<div class="calw-item">' +
+            (l.cover_url ? '<img class="calw-cover" src="' + l.cover_url + '" alt="Capa da aula">' : '<div class="calw-icn"><i class="fa-solid ' + (l.lesson_type === "evento" ? "fa-star" : "fa-play") + '"></i></div>') +
+            '<div class="calw-info">' +
+              '<span class="cat-badge ' + catSlug + '">' + catLabel + '</span>' +
+              '<b>' + l.title + '</b>' +
+              '<span>' + when + (l.duration_minutes ? " · " + l.duration_minutes + " min" : "") + '</span>' +
+            '</div>' +
+            '<div class="calw-side">' +
+              (tag ? '<span class="calw-live">' + tag + '</span>' : '') +
+              (l.link_url ? '<a class="calw-watch-btn js-live-click" data-lesson-id="' + l.id + '" href="' + l.link_url + '" target="_blank" rel="noopener" title="Assistir/entrar"><i class="fa-solid fa-play"></i></a>' : '') +
+            '</div>' +
+          '</div>';
+        }).join("");
+        // conta engajamento: quantos alunos clicaram pra entrar na aula ao
+        // vivo (não é presença confirmada pelo Zoom, só o clique aqui na
+        // plataforma — mas já dá um número útil pra CS e pros doutores).
+        $("calendarList").querySelectorAll(".js-live-click").forEach(function(btn){
+          btn.addEventListener("click", function(){
+            sb.from("live_click_log").insert({
+              lesson_id: btn.getAttribute("data-lesson-id"),
+              student_id: currentStudent.id
+            }).then(function(){});
+          });
+        });
+      });
+  }
+
+  // ---------------- recados (mensagem/link/documento da CS) ----------------
+  function recadoItemHtml(a){
+    var quando = a.created_at ? new Date(a.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"short" }) : "";
+    return '<div class="mural-item">' +
+      '<span class="mural-quando">' + esc(quando) + '</span>' +
+      '<b>' + esc(a.title || "Recado") + '</b>' +
+      '<p>' + esc(a.message || "") + '</p>' +
+      (a.link_url ? '<a href="' + esc(a.link_url) + '" target="_blank" rel="noopener"><i class="fa-solid fa-link"></i> Abrir link</a>' : '') +
+      (a.attachment_url ? '<a href="' + esc(a.attachment_url) + '" target="_blank" rel="noopener"><i class="fa-solid fa-paperclip"></i> ' + esc(a.attachment_name || "anexo") + '</a>' : '') +
+    '</div>';
+  }
+
+  // Antes carregava TODO recado, inclusive o de outra mentoria e o vencido.
+  // Agora so o que e para o aluno: "todas as mentorias" ou uma das dele, e
+  // ainda dentro do prazo. O mural inteiro some quando nao ha nada — um
+  // quadro vazio chama atencao para o nada.
+  function loadRecados(){
+    sb.from("announcements")
+      .select("id,title,message,link_url,attachment_url,attachment_name,all_branches,expires_at,created_at,announcement_branches(branch_id)")
+      .order("created_at", { ascending: false })
+      .then(function(r){
+        var mural = $("mural");
+        if(r.error || !r.data){ mural.style.display = "none"; return; }
+        var agora = Date.now();
+        var meus = currentBranchIds || [];
+        var lista = r.data.filter(function(a){
+          if(a.expires_at && new Date(a.expires_at).getTime() < agora) return false;
+          if(a.all_branches) return true;
+          return (a.announcement_branches || []).some(function(x){ return meus.indexOf(x.branch_id) > -1; });
+        });
+        if(!lista.length){ mural.style.display = "none"; return; }
+        mural.style.display = "";
+        $("muralQtd").textContent = lista.length === 1 ? "1 recado" : lista.length + " recados";
+        $("recadosList").innerHTML = lista.map(recadoItemHtml).join("");
+      });
+  }
+
+  // ---------------- galeria do Curso Endogin 3 ----------------
+  // As fotos vivem em /assets/curso3 em dois tamanhos: -min para a grade (uns
+  // 50 KB cada) e a cheia para o visor (150-350 KB). Os originais tinham 12 a
+  // 32 MB cada; nao ha como servir isso numa galeria.
+  var CURSO3_FOTOS = 9;
+  var visorAtual = 0;
+
+  function galeriaMonta(){
+    var grade = $("galeriaGrade");
+    if(!grade || grade.children.length) return;
+    for(var i = 1; i <= CURSO3_FOTOS; i++){
+      var n = (i < 10 ? "0" : "") + i;
+      var el = document.createElement("div");
+      el.className = "galeria-foto";
+      el.style.backgroundImage = "url(/assets/curso3/foto-" + n + "-min.jpg)";
+      el.style.animationDelay = (i * 45) + "ms";
+      el.innerHTML = '<span class="n">' + n + ' / ' + (CURSO3_FOTOS < 10 ? "0" : "") + CURSO3_FOTOS + '</span><span class="lupa"><i class="fa-solid fa-magnifying-glass-plus"></i></span>';
+      el.setAttribute("data-i", i);
+      el.addEventListener("click", function(){ visorAbre(parseInt(this.getAttribute("data-i"), 10)); });
+      grade.appendChild(el);
+    }
+  }
+  function galeriaAbre(){ galeriaMonta(); $("galeriaCurso3").classList.add("aberta"); document.body.style.overflow = "hidden"; }
+  function galeriaFecha(){ $("galeriaCurso3").classList.remove("aberta"); document.body.style.overflow = ""; }
+  function visorMostra(i){
+    visorAtual = ((i - 1 + CURSO3_FOTOS) % CURSO3_FOTOS) + 1;
+    var n = (visorAtual < 10 ? "0" : "") + visorAtual;
+    $("visorImg").src = "/assets/curso3/foto-" + n + ".jpg";
+    $("visorConta").textContent = n + " / " + (CURSO3_FOTOS < 10 ? "0" : "") + CURSO3_FOTOS;
+    // pre-carrega a proxima pra troca ficar instantanea
+    var prox = new Image(); prox.src = "/assets/curso3/foto-" + ((visorAtual % CURSO3_FOTOS) + 1 < 10 ? "0" : "") + ((visorAtual % CURSO3_FOTOS) + 1) + ".jpg";
+  }
+  function visorAbre(i){ visorMostra(i); $("galeriaVisor").classList.add("aberto"); }
+  function visorFecha(){ $("galeriaVisor").classList.remove("aberto"); }
+
+  if($("verComoFoiBtn")){
+    $("verComoFoiBtn").addEventListener("click", galeriaAbre);
+    $("galeriaFechar").addEventListener("click", galeriaFecha);
+    $("visorFechar").addEventListener("click", visorFecha);
+    $("visorAnt").addEventListener("click", function(){ visorMostra(visorAtual - 1); });
+    $("visorProx").addEventListener("click", function(){ visorMostra(visorAtual + 1); });
+    $("galeriaVisor").addEventListener("click", function(e){ if(e.target === this) visorFecha(); });
+    document.addEventListener("keydown", function(e){
+      if($("galeriaVisor").classList.contains("aberto")){
+        if(e.key === "Escape") visorFecha();
+        else if(e.key === "ArrowLeft") visorMostra(visorAtual - 1);
+        else if(e.key === "ArrowRight") visorMostra(visorAtual + 1);
+      } else if($("galeriaCurso3").classList.contains("aberta") && e.key === "Escape"){
+        galeriaFecha();
+      }
+    });
+    // deslizar no celular
+    var toqueX = null;
+    $("galeriaVisor").addEventListener("touchstart", function(e){ toqueX = e.touches[0].clientX; }, { passive:true });
+    $("galeriaVisor").addEventListener("touchend", function(e){
+      if(toqueX === null) return;
+      var dx = e.changedTouches[0].clientX - toqueX; toqueX = null;
+      if(Math.abs(dx) > 40) visorMostra(visorAtual + (dx < 0 ? 1 : -1));
+    }, { passive:true });
+  }
+
+  // ---------------- chatbot de aulas — SEM transcrição, só ajuda o aluno a
+  // achar a aula certa pelo título/módulo/curso. Busca local (sem custo de
+  // IA): quebra a pergunta em palavras e cruza com o catálogo. ----------------
+  var allAulaCourses = [];
+  function loadAulaCatalog(branchIds){
+    var orParts = ["branch_id.is.null"];
+    if(branchIds && branchIds.length){ orParts.push("branch_id.in.(" + branchIds.join(",") + ")"); }
+    sb.from("courses")
+      .select("id,name,branch_id,course_lessons(id,title,module,url,duration)")
+      .or(orParts.join(","))
+      .order("name")
+      .then(function(r){
+        allAulaCourses = (r.data || []).filter(function(c){ return c.course_lessons && c.course_lessons.length; });
+      });
+  }
+
+  // ---------------- Protocolos e materiais (biblioteca de documentos) ----------------
+  var allMaterials = [];
+  var matStuActiveCat = "Todos";
+  function loadMaterialsStudent(){
+    // RLS já filtra pra status='vigente' e pra mentoria do aluno — não
+    // precisa repetir esse filtro aqui.
+    sb.from("documents")
+      .select("id,code,title,category,doc_type,version,revision_date,responsible_name,view_only,file_url,is_new")
+      .order("created_at", { ascending: false })
+      .then(function(r){
+        allMaterials = r.data || [];
+        renderMatStuCatTabs();
+        renderMatStuList();
+      });
+  }
+  function renderMatStuCatTabs(){
+    var cats = ["Todos"];
+    allMaterials.forEach(function(d){ if(d.category && cats.indexOf(d.category) === -1) cats.push(d.category); });
+    $("matStuCatTabs").innerHTML = cats.map(function(c){
+      return '<span class="mat-cat-tab' + (c === matStuActiveCat ? " active" : "") + '" data-cat="' + escapeHtml(c) + '">' + escapeHtml(c) + '</span>';
+    }).join("");
+    $("matStuCatTabs").querySelectorAll(".mat-cat-tab").forEach(function(tab){
+      tab.addEventListener("click", function(){
+        matStuActiveCat = tab.getAttribute("data-cat");
+        renderMatStuCatTabs();
+        renderMatStuList();
+      });
+    });
+  }
+  function renderMatStuList(){
+    var term = ($("matStuSearch").value || "").trim().toLowerCase();
+    var list = allMaterials.filter(function(d){
+      if(matStuActiveCat !== "Todos" && d.category !== matStuActiveCat) return false;
+      if(!term) return true;
+      return (d.title || "").toLowerCase().indexOf(term) > -1 || (d.code || "").toLowerCase().indexOf(term) > -1;
+    });
+    var wrap = $("matStuList");
+    if(!list.length){ wrap.innerHTML = '<p class="empty-state">Nenhum material disponível ainda.</p>'; return; }
+    wrap.innerHTML = '<div class="mat-table-wrap"><table><thead><tr>' +
+      '<th>Documento</th><th>Tipo</th><th>Versão</th><th>Revisão</th><th>Responsável</th><th></th>' +
+      '</tr></thead><tbody>' +
+      list.map(function(d){
+        return '<tr>' +
+          '<td><b>' + escapeHtml(d.title) + '</b>' + (d.is_new ? '<span class="mat-new-badge">NOVO</span>' : "") + (d.code ? '<br><span style="color:var(--eg-text-muted);font-size:11px;">' + escapeHtml(d.code) + '</span>' : "") + '</td>' +
+          '<td>' + escapeHtml(d.doc_type || "—") + '</td>' +
+          '<td>' + escapeHtml(d.version || "—") + '</td>' +
+          '<td>' + (d.revision_date ? fmtEventDate(d.revision_date) : "—") + '</td>' +
+          '<td>' + escapeHtml(d.responsible_name || "—") + '</td>' +
+          '<td><a class="mat-open-btn" href="' + d.file_url + '" target="_blank" rel="noopener"' + (d.view_only ? "" : ' download') + '>' +
+            (d.view_only ? '<i class="fa-solid fa-eye"></i> Abrir' : '<i class="fa-solid fa-download"></i> Baixar') + '</a></td>' +
+        '</tr>';
+      }).join("") + '</tbody></table></div>';
+  }
+  $("matStuSearch").addEventListener("input", renderMatStuList);
+
+  function escapeHtml(s){
+    return (s || "").toString()
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function normalizeText(s){
+    return (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+
+  var STOPWORDS = ["a","o","as","os","de","da","do","das","dos","um","uma","com","sem","que","pra","para","sobre","aula","aulas","tem","tenho","queria","quero","procuro","procurando","achar","encontrar","onde","qual","quais","como"];
+
+  function searchLessons(query){
+    var tokens = normalizeText(query).split(/\s+/).filter(function(t){ return t.length > 2 && STOPWORDS.indexOf(t) === -1; });
+    if(!tokens.length) return [];
+    var results = [];
+    allAulaCourses.forEach(function(course){
+      (course.course_lessons || []).forEach(function(l){
+        var haystack = normalizeText([l.title, l.module, course.name].filter(Boolean).join(" "));
+        var score = 0;
+        tokens.forEach(function(t){ if(haystack.indexOf(t) > -1) score++; });
+        if(score > 0) results.push({ lesson: l, course: course, score: score });
+      });
+    });
+    results.sort(function(a, b){ return b.score - a.score; });
+    return results.slice(0, 5);
+  }
+
+  function appendChatBubble(role, html){
+    var el = document.createElement("div");
+    el.className = "chat-bubble " + (role === "user" ? "chat-user" : "chat-bot");
+    el.innerHTML = html;
+    $("aulaChatMessages").appendChild(el);
+    $("aulaChatMessages").scrollTop = $("aulaChatMessages").scrollHeight;
+  }
+
+  function renderLessonResults(results){
+    return '<div class="chat-lessons">' + results.map(function(r){
+      var meta = [r.course.name, r.lesson.module].filter(Boolean).join(" · ");
+      return '<div class="chat-lesson-card">' +
+        '<b>' + escapeHtml(r.lesson.title) + '</b>' +
+        (meta ? '<span>' + escapeHtml(meta) + '</span>' : '') +
+        (r.lesson.url ? '<a href="' + r.lesson.url + '" target="_blank" rel="noopener">Assistir aula <i class="fa-solid fa-arrow-up-right-from-square"></i></a>' : '') +
+      '</div>';
+    }).join("") + '</div>';
+  }
+
+  function handleAulaChatSend(){
+    var input = $("aulaChatInput");
+    var text = input.value.trim();
+    if(!text) return;
+    appendChatBubble("user", escapeHtml(text));
+    input.value = "";
+    if(!allAulaCourses.length){
+      appendChatBubble("bot", "Ainda não achei sua mentoria pra puxar o catálogo — tenta de novo em alguns segundos.");
+      return;
+    }
+    var results = searchLessons(text);
+    if(results.length){
+      appendChatBubble("bot", "Achei isso aqui pra você:" + renderLessonResults(results));
+    } else {
+      appendChatBubble("bot", "Não encontrei nenhuma aula com esses termos. Tenta descrever de outro jeito — o assunto, ou o tema da aula — ou fala direto com sua CS.");
+    }
+  }
+
+  var aulaChatStarted = false;
+  $("aulaChatToggle").addEventListener("click", function(){
+    var panel = $("aulaChatPanel");
+    var opening = !panel.classList.contains("open");
+    panel.classList.toggle("open");
+    if(opening && !aulaChatStarted){
+      aulaChatStarted = true;
+      appendChatBubble("bot", "Oi! Me conta o que você está procurando (ex: \"aula sobre emagrecimento\" ou \"casos clínicos de TRH\") que eu acho pra você no catálogo.");
+    }
+  });
+  $("aulaChatClose").addEventListener("click", function(){ $("aulaChatPanel").classList.remove("open"); });
+  $("aulaChatSend").addEventListener("click", handleAulaChatSend);
+  $("aulaChatInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); handleAulaChatSend(); }
+  });
+
+  // ---------------- navegação entre páginas ----------------
+  var pageEls = {
+    jornada: $("page-jornada"),
+    calendario: $("page-calendario"),
+    conteudos: $("page-conteudos"),
+    materiais: $("page-materiais"),
+    opiniao: $("page-opiniao")
+  };
+  var sideLinkBtns = document.querySelectorAll(".side-link");
+
+  // Cada pagina tem seu par de cores no brilho de fundo. A troca e lenta e da
+  // sensacao de lugar; a marca continua a mesma.
+  var AMBIENTE = {
+    jornada:    ["201,151,75", "120,150,200"],
+    calendario: ["150,175,215", "201,151,75"],
+    conteudos:  ["196,140,96", "150,120,190"],
+    materiais:  ["130,180,165", "201,151,75"],
+    opiniao:    ["205,150,150", "201,151,75"]
+  };
+
+  function showPage(key){
+    Object.keys(pageEls).forEach(function(k){ pageEls[k].classList.toggle("active", k === key); });
+    sideLinkBtns.forEach(function(l){ l.classList.toggle("active", l.getAttribute("data-page") === key); });
+    var amb = AMBIENTE[key];
+    if(amb){
+      document.documentElement.style.setProperty("--amb-a", amb[0]);
+      document.documentElement.style.setProperty("--amb-b", amb[1]);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  sideLinkBtns.forEach(function(l){
+    l.addEventListener("click", function(){ showPage(l.getAttribute("data-page")); });
+  });
+
+  $("logoutBtn").addEventListener("click", function(){
+    sb.auth.signOut().then(function(){ location.reload(); });
+  });
+
+  // ---------------- feedback do aluno (real) ----------------
+  var fbRating = 0;
+  var fbStars = document.querySelectorAll("#fbStars i");
+  function paintStars(v){
+    fbStars.forEach(function(star){
+      var starVal = parseInt(star.getAttribute("data-v"), 10);
+      if(starVal <= v){ star.classList.remove("fa-regular"); star.classList.add("fa-solid", "active"); }
+      else { star.classList.remove("fa-solid", "active"); star.classList.add("fa-regular"); }
+    });
+  }
+  fbStars.forEach(function(star){
+    star.addEventListener("click", function(){
+      fbRating = parseInt(star.getAttribute("data-v"), 10);
+      paintStars(fbRating);
+      $("fbSubmit").disabled = false;
+    });
+    star.addEventListener("mouseenter", function(){ paintStars(parseInt(star.getAttribute("data-v"), 10)); });
+  });
+  $("fbStars").addEventListener("mouseleave", function(){ paintStars(fbRating); });
+
+  $("fbSubmit").addEventListener("click", function(){
+    if(fbRating === 0) return;
+    $("fbErr").textContent = "";
+    $("fbSubmit").disabled = true;
+    sb.from("feedback_entries").insert({
+      student_id: currentStudent.id,
+      category: $("fbCategory").value,
+      rating: fbRating,
+      comment: $("fbComment").value.trim() || null
+    }).then(function(r){
+      if(r.error){ $("fbErr").textContent = "Erro ao enviar: " + r.error.message; $("fbSubmit").disabled = false; return; }
+      $("feedbackFormWrap").style.display = "none";
+      $("feedbackThanks").style.display = "flex";
+    });
+  });
+
+  // ---------------- NPS periódico (real) ----------------
+  var npsScore = null;
+  var npsGrid = $("npsScaleGrid");
+  for(var n = 0; n <= 10; n++){
+    (function(n){
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = n;
+      b.addEventListener("click", function(){
+        npsScore = n;
+        npsGrid.querySelectorAll("button").forEach(function(x){ x.classList.remove("active"); });
+        b.classList.add("active");
+        $("npsSubmit").disabled = false;
+      });
+      npsGrid.appendChild(b);
+    })(n);
+  }
+
+  $("npsSubmit").addEventListener("click", function(){
+    if(npsScore === null) return;
+    $("npsErr").textContent = "";
+    $("npsSubmit").disabled = true;
+    sb.from("nps_responses").insert({
+      student_id: currentStudent.id,
+      score: npsScore,
+      source: "periodico",
+      comment: $("npsComment").value.trim() || null
+    }).then(function(r){
+      if(r.error){ $("npsErr").textContent = "Erro ao enviar: " + r.error.message; $("npsSubmit").disabled = false; return; }
+      $("npsFormWrap").style.display = "none";
+      $("npsThanks").style.display = "flex";
+    });
+  });
+</script>
+</body>
+</html>
